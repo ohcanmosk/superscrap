@@ -4,6 +4,7 @@
 // También guarda data/dia-stock.json y data/carrefour-stock.json con el stock de los locales de "mi zona".
 // Histórico: en GitHub Actions (o con --historial) agrega una "toma" a data/historial/<categoría>.json
 // con el precio sin promo y con promo de cada producto de la categoría; se guardan los últimos 60 días.
+// Descuentos con billeteras/bancos (Mercado Pago, MODO...): data/promos.json, ver promos.js.
 // Uso: node scrape.js [--historial]
 
 const fs = require("fs");
@@ -11,6 +12,7 @@ const path = require("path");
 
 const { CATEGORIAS, ZONA, SIMULATION } = require("./categorias.js");
 const { tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat } = require("./comun.js");
+const { bajarPromos } = require("./promos.js");
 // Las URLs salen de categorias.js (las mismas que usa index.html). Clave = nombre del archivo.
 const SOURCES = {}; // nombre → { url, store, cat }
 for (const [cat, c] of Object.entries(CATEGORIAS)) {
@@ -164,6 +166,23 @@ function guardarHistorial(out, porCat, ahora) {
       meta.errors[key] = e.message;
       console.error(`${key}: ERROR ${e.message}`);
     }
+  }
+  // Descuentos con medios de pago. Si un súper falla, se conservan sus promos anteriores (las que sigan vigentes).
+  try {
+    const f = path.join(out, "promos.json");
+    const nuevo = await bajarPromos();
+    let viejo = { promos: [] };
+    try { viejo = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date());
+    for (const s of Object.keys(nuevo.errors)) {
+      nuevo.promos.push(...viejo.promos.filter(p => p.super === s && (!p.hasta || p.hasta >= hoy)));
+      meta.errors["promos-" + s] = nuevo.errors[s];
+    }
+    if (nuevo.promos.length) fs.writeFileSync(f, JSON.stringify(nuevo));
+    meta.ok.promos = nuevo.promos.length;
+  } catch (e) {
+    meta.errors.promos = e.message;
+    console.error(`promos: ERROR ${e.message}`);
   }
   if (GUARDAR_HISTORIAL) {
     try { guardarHistorial(out, porCat, new Date(meta.updated)); }

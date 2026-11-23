@@ -65,8 +65,7 @@ Las categorías fijas se configuran en `categorias.js`.
 
 ## Reglas
 
-- **Coto fin de semana:** % configurable para sábado y domingo (15% por defecto). Se aplica solo a productos sin promo.
-- **Club Dia:** % configurable por día, para todas las leches o solo para la marca DIA. Por defecto no suma a las promos.
+- **Descuentos con medios de pago:** en la pestaña 💳 Descuentos elegís qué billeteras y bancos tenés (Mercado Pago, MODO, Cuenta DNI, Naranja X…). Los precios de cada día incluyen el mejor descuento que publica cada súper para esos medios (ej. Coto −25% los viernes con Mercado Pago). La pestaña muestra todos los descuentos de la semana con su tope, compra mínima y condiciones; se actualizan solos dos veces por día.
 - Marcas excluidas: TREGAR por defecto (editable).
 - Leches: se excluyen chocolatadas, en polvo, condensadas, infantiles y vegetales. Las "especiales" (0% lactosa, proteína, etc.) se pueden activar.
 

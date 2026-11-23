@@ -120,7 +120,67 @@
     return true;
   }
 
-  const api = { numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat };
+  // ---------- Medios de pago (descuentos bancarios / billeteras) ----------
+  // tipo: billetera | banco | beneficio (programas: ANSES, jubilados...) | tarjeta (último recurso).
+  // logo: archivo en logos/<logo>.png (si no hay, la app muestra el nombre). rx: se busca en el texto normalizado.
+  const MEDIOS = {
+    mercadopago:  { label: "Mercado Pago", tipo: "billetera", logo: "mercadopago", rx: /mercado ?pago/ },
+    modo:         { label: "MODO", tipo: "billetera", logo: "modo", rx: /\bmodo\b/ },
+    cuentadni:    { label: "Cuenta DNI", tipo: "billetera", logo: "cuentadni", rx: /cuenta ?dni|clave dni/ },
+    personalpay:  { label: "Personal Pay", tipo: "billetera", logo: "personalpay", rx: /personal ?pay/ },
+    naranjax:     { label: "Naranja X", tipo: "billetera", logo: "naranjax", rx: /naranja/ },
+    uala:         { label: "Ualá", tipo: "billetera", rx: /\buala\b/ },
+    prex:         { label: "Prex", tipo: "billetera", rx: /\bprex\b/ },
+    carrefourbanco: { label: "Carrefour Banco", tipo: "billetera", rx: /carrefour banco|cuenta digital|tarjeta de credito (de )?carrefour|carrefour-?credito/ },
+    galicia:      { label: "Galicia", tipo: "banco", logo: "galicia", rx: /galicia/ },
+    santander:    { label: "Santander", tipo: "banco", rx: /santander/ },
+    bbva:         { label: "BBVA", tipo: "banco", rx: /bbva|\bfrances\b/ },
+    macro:        { label: "Macro", tipo: "banco", logo: "macro", rx: /\bmacro\b/ },
+    nacion:       { label: "Banco Nación", tipo: "banco", logo: "nacion", rx: /banco (de la )?nacion|\bbna\b|logo nacion/ },
+    provincia:    { label: "Banco Provincia", tipo: "banco", rx: /banco (de la )?provincia|bco-provincia/ },
+    ciudad:       { label: "Banco Ciudad", tipo: "banco", logo: "ciudad", rx: /banco (de la )?ciudad|app de ciudad|logo ciudad\d/ },
+    patagonia:    { label: "Patagonia", tipo: "banco", logo: "patagonia", rx: /patagonia/ },
+    icbc:         { label: "ICBC", tipo: "banco", logo: "icbc", rx: /\bicbc\b/ },
+    supervielle:  { label: "Supervielle", tipo: "banco", logo: "supervielle", rx: /supervielle|superville/ },
+    comafi:       { label: "Comafi", tipo: "banco", logo: "comafi", rx: /comafi/ },
+    columbia:     { label: "Columbia", tipo: "banco", logo: "columbia", rx: /columbia/ },
+    credicoop:    { label: "Credicoop", tipo: "banco", logo: "credicoop", rx: /credicoop/ },
+    hipotecario:  { label: "Hipotecario", tipo: "banco", logo: "hipotecario", rx: /hipotecario/ },
+    itau:         { label: "Itaú", tipo: "banco", rx: /\bitau\b/ },
+    hsbc:         { label: "HSBC", tipo: "banco", rx: /\bhsbc\b/ },
+    tci:          { label: "TCI", tipo: "banco", logo: "tci", rx: /\btci\b/ },
+    sidecreer:    { label: "Sidecreer", tipo: "banco", rx: /sidecreer/ },
+    bancodelsol:  { label: "Banco del Sol", tipo: "banco", rx: /banco del sol|\bbds\b/ },
+    corrientes:   { label: "Banco de Corrientes", tipo: "banco", rx: /banco (de )?corrientes/ },
+    entrerios:    { label: "Banco Entre Ríos", tipo: "banco", rx: /banco (de )?entre rios/ },
+    bancor:       { label: "Bancor", tipo: "banco", rx: /bancor\b/ },
+    anses:        { label: "ANSES", tipo: "beneficio", logo: "anses", rx: /anses/ },
+    jubilados:    { label: "Jubilados", tipo: "beneficio", logo: "jubilados", rx: /jubilad/ },
+    ciudadania:   { label: "Ciudadanía Porteña", tipo: "beneficio", logo: "ciudadania", rx: /ciudadania porten/ },
+    empleados:    { label: "Empleados públicos", tipo: "beneficio", rx: /emplead[oa](\/a)? public/ },
+    clublanacion: { label: "Club La Nación", tipo: "beneficio", rx: /club ?(la ?)?nacion/ },
+    comunidad:    { label: "Comunidad Coto", tipo: "beneficio", rx: /comunidad/ },
+    // Varias marcas juntas ("Visa, Mastercard, Amex y Cabal") = cualquier tarjeta de crédito.
+    tarjetas:     { label: "Tarjetas de crédito", tipo: "tarjeta", rx: /(visa|mastercard|american express|amex|cabal)\b.*(?!\1)(visa|mastercard|american express|amex|cabal)\b/ },
+    amex:         { label: "American Express", tipo: "tarjeta", logo: "amex", rx: /american express|\bamex/ },
+    visa:         { label: "Visa", tipo: "tarjeta", logo: "visa", rx: /\bvisa/ },
+    todos:        { label: "Cualquier medio de pago", tipo: "todos", rx: /todos los medios de pago/ },
+  };
+  // Qué medio pide una promo según uno o más textos, en orden de importancia (título/descripción primero,
+  // después el logo o el banco asociado). Prioridad: billetera > banco > beneficio > "todos los medios" > tarjeta.
+  // "Pagando con MODO desde la app de Ciudad" → { medio: "modo", banco: "ciudad" } (hace falta tener los dos).
+  function clasificarMedio(...textos) {
+    const ns = textos.filter(Boolean).map(t => norm(t).replace(/[_.-]+/g, " "));
+    const de = tipo => {
+      for (const n of ns) { const k = Object.keys(MEDIOS).find(k => MEDIOS[k].tipo === tipo && MEDIOS[k].rx.test(n)); if (k) return k; }
+      return null;
+    };
+    const billetera = de("billetera"), banco = de("banco");
+    if (billetera) return { medio: billetera, banco: billetera === "modo" ? banco : null };
+    return { medio: banco || de("beneficio") || de("todos") || de("tarjeta"), banco: null };
+  }
+
+  const api = { numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat, MEDIOS, clasificarMedio };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapComun = api;
 })(this);

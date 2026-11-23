@@ -119,6 +119,37 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .brand small{color:var(--muted);margin-left:3px}
 .brand.on{background:var(--ink);color:var(--bg)} .brand.on small{color:inherit;opacity:.7}
 .chipx button{background:none;color:inherit;padding:0 6px;font-weight:700;border-radius:999px}
+/* Descuentos con medios de pago */
+.logo{height:26px;width:auto;max-width:92px;object-fit:contain;background:#fff;border-radius:6px;padding:2px 5px;display:block}
+.logotxt{display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:2px 8px;border-radius:6px;background:var(--chip);color:var(--ink);font-weight:700;font-size:12px;line-height:1.1;text-align:center}
+.medios{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.medio{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--line);color:var(--ink);font-weight:500;font-size:13px;padding:3px 8px 3px 3px;border-radius:10px}
+.medio .chk{width:14px;font-weight:800;color:var(--good);text-align:center}
+.medio.on{border-color:var(--good);background:var(--good-soft)}
+.medio:not(.on) .logo{filter:grayscale(1);opacity:.55}
+.medio:not(.on) .logotxt{opacity:.6}
+.mediogrp{font-size:12px;color:var(--muted);margin-top:10px}
+.pfilters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--chip);border-radius:999px;padding:3px;gap:2px}
+.seg button{background:none;color:var(--ink);font-weight:500;padding:5px 12px;border-radius:999px;font-size:13px}
+.seg button.on{background:var(--ink);color:var(--bg);font-weight:700}
+.pday{margin-top:18px}
+.pday h3{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.pday h3 small{font-weight:500;text-transform:none;letter-spacing:0}
+.promo{display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:start;padding:10px 6px;border-top:1px solid var(--line)}
+.promo.mine{background:linear-gradient(90deg,var(--good-soft),transparent 70%);border-radius:8px}
+.plogos{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.ptit{font-size:14px;line-height:1.35}
+.pcond{font-size:12px;color:var(--muted);margin-top:2px}
+.pcond b{color:var(--ink);font-weight:600}
+.ppct{font-size:22px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap}
+.ppct small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+.promo details{margin-top:4px}
+.promo details summary{font-size:12px;font-weight:600;color:var(--muted)}
+.promo .legal{font-size:11px;color:var(--muted);max-height:200px;overflow:auto;margin-top:6px;white-space:pre-line}
+.promo .legal a{color:inherit}
+.tagbtn{cursor:pointer;border:0}
+@media (max-width:500px){.promo{grid-template-columns:76px 1fr auto;gap:8px}.logo{max-width:72px;height:22px}.ppct{font-size:19px}}
 .grid2>*,.cols>*,.form>*,.item>*,.settings>*{min-width:0}
 .form select,.form input{width:100%}
 #insitu td:nth-child(3){min-width:150px}
@@ -144,6 +175,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 
   <nav class="tabs" id="tabs"></nav>
 
+  <div id="prodView">
   <section class="card hidden" id="searchCard">
     <h2>Buscar cualquier producto</h2>
     <form class="searchbar" id="searchForm">
@@ -177,7 +209,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 
   <section class="card">
     <h2>Sin promo · comprando 1 unidad</h2>
-    <div class="sub" style="margin:-6px 0 10px">Precio que pagás llevando una sola. Incluye el descuento de fin de semana de Coto (solo en productos sin promo) y Club Dia si está activo.</div>
+    <div class="sub" style="margin:-6px 0 10px">Precio que pagás llevando una sola. Incluye el mejor descuento del día con tus medios de pago (pestaña 💳 Descuentos).</div>
     <div class="cols" id="rankOne"></div>
   </section>
 
@@ -212,20 +244,11 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
           <div id="zonaStores"></div>
         </fieldset>
         <fieldset>
-          <legend>Coto · descuento de fin de semana</legend>
-          <div class="sub">Aplica solo a productos <b>sin</b> promoción.</div>
-          <div class="row">Sábado <input type="number" id="cSat" min="0" max="100"> %</div>
-          <div class="row">Domingo <input type="number" id="cSun" min="0" max="100"> %</div>
-        </fieldset>
-        <fieldset>
-          <legend>Club Dia</legend>
-          <div class="row"><label><input type="checkbox" id="clubOn"> Tengo Club Dia</label></div>
-          <div class="sub">% de descuento por día (cambia según la semana, revisá la app de Dia):</div>
-          <div class="wkgrid" id="clubDays"></div>
-          <div class="row">Aplica a
-            <select id="clubScope"><option value="all">todos los productos</option><option value="dia">solo marca DIA</option></select>
-          </div>
-          <div class="row"><label><input type="checkbox" id="clubStack"> Se suma a las promos de Dia</label></div>
+          <legend>Descuentos con medios de pago</legend>
+          <div class="sub">Los precios incluyen el mejor descuento del día que publica cada súper para <b>tus</b> medios de pago (Mercado Pago, MODO, bancos…). Se actualizan solos.</div>
+          <div class="medios" id="misMediosCfg"></div>
+          <div class="row">Compro <select id="donde"><option value="local">en el local</option><option value="online">online</option></select></div>
+          <div class="row"><button type="button" class="ghost" id="goPromos">💳 Elegir mis medios de pago</button></div>
         </fieldset>
         <fieldset>
           <legend>Filtros</legend>
@@ -249,6 +272,26 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
       <div class="tablewrap" style="margin-top:10px"><table id="allTable"></table></div>
     </details>
   </section>
+  </div>
+
+  <div id="promoView" class="hidden">
+    <section class="card">
+      <h2>Mis medios de pago</h2>
+      <div class="sub">Tocá los que tenés. Los precios de las otras pestañas incluyen el mejor descuento del día con estos medios.</div>
+      <div id="mediosPick"></div>
+    </section>
+    <section class="card">
+      <h2>Descuentos de la semana</h2>
+      <div class="sub" id="promoInfo" style="margin:-6px 0 10px"></div>
+      <div class="pfilters">
+        <div class="seg" id="pfQuien"><button data-v="mios">Con mis medios</button><button data-v="todos">Todos</button></div>
+        <div class="seg" id="pfSuper"><button data-v="">Todos los súper</button><button data-v="coto">Coto</button><button data-v="dia">Dia</button><button data-v="carrefour">Carrefour</button></div>
+        <div class="seg" id="pfDonde"><button data-v="local">En el local</button><button data-v="online">Online</button></div>
+        <label class="row"><input type="checkbox" id="pfCuotas"> Cuotas sin interés</label>
+      </div>
+      <div id="promoList"></div>
+    </section>
+  </div>
 </div>
 
 <script src="categorias.js"></script>
@@ -262,8 +305,9 @@ const DAYS_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","s
 // Categorías (URLs y filtros) en categorias.js, compartido con scrape.js.
 const { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar } = window.SuperScrapCats;
 // Lectura de tamaños, promos y precios (compartido con scrape.js e historico.html).
-const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat } = window.SuperScrapComun;
+const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS } = window.SuperScrapComun;
 const SEARCH = "busqueda"; // pestaña de búsqueda libre
+const PROMOS = "descuentos"; // pestaña de descuentos con medios de pago
 const TOP_N = 4;           // cuántos productos se muestran por súper en los rankings
 // Servidor local (iniciar.bat). Si la página se abre con doble clic (file://) se lo busca acá.
 const LOCAL_SERVER = "http://localhost:8787";
@@ -271,8 +315,11 @@ const FETCH_TIMEOUT = 15000; // ms por intento, para que un súper lento no deje
 const SPECIAL_RX = /lactosa|protein|prote[ií]na|colageno|colágeno|calcio|multidefensa|sense|kids|crecimiento|a2|vida activa/i;
 
 const DEFAULT_SETTINGS = {
-  cotoWeekend: { 6: 15, 0: 15 },
-  club: { on: true, days: {}, scope: "all", stack: false },
+  // Medios de pago que tiene el usuario ("mercadopago": true...) y dónde compra (local / online).
+  medios: { mercadopago: true },
+  donde: "local",
+  // Filtros de la pestaña Descuentos.
+  pf: { quien: "mios", super: "", cuotas: false },
   excluded: ["TREGAR"],
   tipos: { larga: true, sachet: true, special: false, entera: true, desc: true },
   // "Mi zona": only = mostrar solo productos con stock; on = tiendas marcadas ("coto:215": true...).
@@ -294,10 +341,13 @@ const store = {
   set(k, v) { try { localStorage.setItem("superscrap:" + k, JSON.stringify(v)); } catch {} },
 };
 let S = Object.assign(structuredClone(DEFAULT_SETTINGS), store.get("settings", {}));
+// Versiones anteriores tenían descuentos cargados a mano (finde de Coto, Club Dia): ahora salen de data/promos.json.
+delete S.cotoWeekend; delete S.club;
+S.pf = Object.assign(structuredClone(DEFAULT_SETTINGS.pf), S.pf);
 // Caché por categoría (la de leches mantiene las claves viejas "products"/"fetchedAt").
 const cacheKey = (c, k) => c === "leche" ? k : k + ":" + c;
 let cat = store.get("cat", "leche");
-if (cat !== SEARCH && !CATEGORIAS[cat]) cat = "leche";
+if (cat !== SEARCH && cat !== PROMOS && !CATEGORIAS[cat]) cat = "leche";
 // query = palabras a buscar; qExcl = palabras quitadas (los productos que las tengan no entran en el análisis).
 let query = store.get("query", "");
 let qExcl = store.get("queryExcl", []);
@@ -344,7 +394,7 @@ function searchConf(q, excl = []) {
     exclude: neg.length ? new RegExp(neg.map(escRx).join("|")) : null,
   };
 }
-const conf = () => cat === SEARCH ? searchConf(query, qExcl) : CATEGORIAS[cat];
+const conf = () => cat === SEARCH ? searchConf(query, qExcl) : CATEGORIAS[cat] || CATEGORIAS.leche;
 const unitOf = p => p.unit || "L";
 
 // ---------- Fetch con estrategia de CORS ----------
@@ -508,6 +558,11 @@ products = loadProducts(cat);
 let reqId = 0;
 let stockNote = "";
 async function refresh() {
+  if (cat === PROMOS) {
+    ++reqId; // descarta una consulta de precios que haya quedado en curso
+    const btn = $("btnRefresh"); btn.disabled = true; setStatus("Buscando descuentos…");
+    await loadPromos(); btn.disabled = false; setStatus(""); render(); return;
+  }
   const c = conf(), myCat = cat, my = ++reqId;
   if (myCat === SEARCH && !c.include.length) { $("btnRefresh").disabled = false; setStatus(""); render(); return; }
   const btn = $("btnRefresh"); btn.disabled = true; setStatus("Consultando Coto, Dia y Carrefour…");
@@ -573,25 +628,53 @@ function setStatus(msg, err) {
 }
 
 // ---------- Precios según día ----------
-function clubPct(d) { return S.club.on ? (+S.club.days[d] || 0) : 0; }
+// ---------- Descuentos con medios de pago (data/promos.json, lo genera promos.js) ----------
+let promosData = store.get("promos", null); // { updated, promos: [...] }
+const medioOn = k => k === "todos" || !!S.medios[k];
+const aplica = p => medioOn(p.medio) && (!p.banco || medioOn(p.banco));
+const medioLabel = p => (MEDIOS[p.medio]?.label || p.medio) + (p.banco ? " + " + (MEDIOS[p.banco]?.label || p.banco) : "");
+// Fecha (YYYY-MM-DD) del próximo día de la semana d, contando hoy.
+function fechaDe(d) {
+  const t = new Date(todayISO + "T12:00:00Z");
+  t.setUTCDate(t.getUTCDate() + (d - todayIdx + 7) % 7);
+  return t.toISOString().slice(0, 10);
+}
+const vigente = (p, f) => (!p.desde || p.desde <= f) && (!p.hasta || p.hasta >= f);
+const enDonde = (p, donde = S.donde) => donde === "online" ? p.online : p.local;
+// Promos con % de descuento que el usuario puede usar en ese súper ese día, de mayor a menor.
+function pagosDe(st, d) {
+  const f = fechaDe(d);
+  return (promosData?.promos || []).filter(p => p.super === st && p.pct && p.dias.includes(d) && vigente(p, f) && enDonde(p) && aplica(p))
+    .sort((a, b) => b.pct - a.pct);
+}
+// El mejor descuento para un producto: las promos "solo productos sin oferta" (Coto) no aplican si tiene promo u oferta.
+const pagoPara = (p, d) => pagosDe(p.store, d).find(x => !(x.soloSinOferta && (p.promos.length || p.list > p.shelf))) || null;
+async function loadPromos() {
+  const base = await localServerBase();
+  const u = base ? base + "/data/promos.json" : location.protocol.startsWith("http") ? "data/promos.json" : null;
+  if (!u) return;
+  try {
+    const r = await fetchT(u);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    promosData = await r.json();
+    store.set("promos", promosData);
+  } catch {}
+}
+
 function priceFor(p, d) {
   let one = p.shelf; const notes = [];
   if (p.list > p.shelf) notes.push("oferta, antes " + fmt(p.list));
-  if (p.store === "coto") {
-    const w = +S.cotoWeekend[d] || 0;
-    p.promos.filter(x => x.qty <= 1).forEach(x => { if (x.unit < one) { one = x.unit; notes.push(x.text); } });
-    if (w && !p.hasPromo) { one = p.shelf * (1 - w / 100); notes.push(`−${w}% finde Coto`); }
-  } else {
-    const c = clubPct(d);
-    const applies = c && (S.club.scope === "all" || p.brand === "DIA");
-    if (applies) { one = p.shelf * (1 - c / 100); notes.push(`−${c}% Club Dia`); }
-  }
+  // Coto: descuentos de 1 unidad ("35%Dto") que vienen en dtoDescuentos.
+  if (p.store === "coto") p.promos.filter(x => x.qty <= 1).forEach(x => { if (x.unit < one) { one = x.unit; notes.push(x.text); } });
   let best = one, bestNote = notes.join(" · "), bestQty = 1;
-  const c = p.store === "dia" && S.club.stack && clubPct(d) &&(S.club.scope === "all" || p.brand === "DIA") ? clubPct(d) : 0;
-  p.promos.forEach(x => {
-    const u = c ? x.unit * (1 - c / 100) : x.unit;
-    if (u < best) { best = u; bestQty = x.qty; bestNote = x.text + (c ? ` + Club Dia −${c}%` : ""); }
-  });
+  p.promos.forEach(x => { if (x.unit < best) { best = x.unit; bestQty = x.qty; bestNote = x.text; } });
+  // Descuento con medio de pago del día: se aplica sobre lo que se paga (con o sin promo del producto).
+  const pago = pagoPara(p, d);
+  if (pago) {
+    const k = 1 - pago.pct / 100, txt = `−${pago.pct}% ${medioLabel(pago)}`;
+    one *= k; best *= k;
+    notes.push(txt); bestNote = bestNote ? bestNote + " · " + txt : txt;
+  }
   // Precio por kg/L (null si no se sabe el tamaño del envase).
   return { one, oneNote: notes.join(" · "), best, bestNote, bestQty,
     oneU: p.size ? one / p.size : null, bestU: p.size ? best / p.size : null };
@@ -673,6 +756,8 @@ const perUnit = (p, v) => v == null || (unitOf(p) === "L" && p.size === 1) ? "" 
 function render() {
   setStatus($("status").className.includes("err") ? $("status").textContent : "");
   renderTabs();
+  renderMisMediosCfg();
+  if (cat === PROMOS) { renderPromos(); return; }
   renderDays();
   const list = filtered().map(p => ({ p, x: priceFor(p, selDay) }));
   const by = (store, mode) => list.filter(e => e.p.store === store).sort((a, b) => cmp(a, b, mode));
@@ -698,22 +783,27 @@ function renderExcl(shown) {
     ? `${hidden} producto${hidden === 1 ? "" : "s"} quitado${hidden === 1 ? "" : "s"} del análisis por: ${qExcl.join(", ")} · quedan ${shown}.` : "";
 }
 function renderTabs() {
-  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + (c.tab || c.label)]), [SEARCH, "🔎 Buscar"]];
+  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + (c.tab || c.label)]), [SEARCH, "🔎 Buscar"], [PROMOS, "💳 Descuentos"]];
   $("tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${esc(l)}</button>`).join("");
-  const c = conf();
-  const title = cat === SEARCH ? (query ? `“${query}”` + (qExcl.length ? " sin " + qExcl.join(", ") : "") : "Buscar") : c.label;
+  const title = cat === PROMOS ? "Descuentos" :
+    cat === SEARCH ? (query ? `“${query}”` + (qExcl.length ? " sin " + qExcl.join(", ") : "") : "Buscar") : conf().label;
   $("title").textContent = "🛒 SuperScrap · " + title;
   document.title = "SuperScrap · " + title;
   $("searchCard").classList.toggle("hidden", cat !== SEARCH);
+  $("prodView").classList.toggle("hidden", cat === PROMOS);
+  $("promoView").classList.toggle("hidden", cat !== PROMOS);
+  $("btnRefresh").textContent = cat === PROMOS ? "Actualizar descuentos" : "Actualizar precios";
   $("lecheFilters").classList.toggle("hidden", cat !== "leche");
 }
 function renderDays() {
   $("days").innerHTML = [1,2,3,4,5,6,0].map(d =>
     `<button class="day ${d === selDay ? "on" : ""} ${d === todayIdx ? "today" : ""}" data-d="${d}">${DAYS[d]}${d === todayIdx ? " (hoy)" : ""}</button>`).join("");
-  const w = +S.cotoWeekend[selDay] || 0, c = clubPct(selDay);
-  $("daynote").innerHTML =
-    `<span class="tag ${w ? "coto" : ""}">Coto: ${w ? `−${w}% en productos sin promo` : "sin descuento de fin de semana"}</span>` +
-    `<span class="tag ${c ? "dia" : ""}">Club Dia: ${S.club.on ? (c ? `−${c}% ${S.club.scope === "dia" ? "en marca DIA" : ""}` : "sin descuento este día") : "desactivado"}</span>` +
+  // El mejor descuento con mis medios de pago en cada súper ese día.
+  $("daynote").innerHTML = STORES.map(st => {
+    const x = pagosDe(st, selDay)[0];
+    return `<span class="tag ${x ? st : ""}">${storeName(st)}: ${x ? `−${x.pct}% ${esc(medioLabel(x))}` +
+      (x.minimo ? ` (mín. ${fmt(x.minimo)})` : "") + (x.soloSinOferta ? " en productos sin oferta" : "") : "sin descuento con tus medios"}</span>`;
+  }).join("") + `<button class="tag tagbtn" data-cat="${PROMOS}">💳 ver todos los descuentos</button>` +
     (selDay !== todayIdx ? `<span class="tag warn">Simulando ${DAYS_FULL[selDay]} con precios de hoy</span>` : "");
 }
 function itemHTML(e, i, mode, isWin) {
@@ -865,18 +955,14 @@ $("insitu").onclick = ev => {
 
 // ---------- Configuración ----------
 function bindSettings() {
-  $("cSat").value = S.cotoWeekend[6] ?? 0; $("cSun").value = S.cotoWeekend[0] ?? 0;
-  $("clubOn").checked = S.club.on; $("clubScope").value = S.club.scope; $("clubStack").checked = S.club.stack;
+  $("donde").value = S.donde;
   $("excl").value = S.excluded.join(", ");
   $("tLarga").checked = S.tipos.larga; $("tSachet").checked = S.tipos.sachet; $("tSpecial").checked = S.tipos.special;
   $("tEntera").checked = S.tipos.entera !== false; $("tDesc").checked = S.tipos.desc !== false;
   $("zonaStores").innerHTML = STORES.map(s => ZONA[s].map(z =>
     `<div class="row"><label title="${esc(z.detalle)}"><input type="checkbox" data-zona="${s}:${z.id}" ${zonaOn(s, z) ? "checked" : ""}> ${esc(z.label)}</label><span class="sub">${esc(z.detalle)}</span></div>`).join("")).join("");
-  $("clubDays").innerHTML = [1,2,3,4,5,6,0].map(d => `<label>${DAYS[d]}<input type="number" min="0" max="100" data-club="${d}" value="${S.club.days[d] || ""}" placeholder="0"></label>`).join("");
   const upd = () => {
-    S.cotoWeekend = { 6: +$("cSat").value || 0, 0: +$("cSun").value || 0 };
-    S.club.on = $("clubOn").checked; S.club.scope = $("clubScope").value; S.club.stack = $("clubStack").checked;
-    S.club.days = {}; document.querySelectorAll("[data-club]").forEach(i => { if (+i.value) S.club.days[i.dataset.club] = +i.value; });
+    S.donde = $("donde").value;
     S.excluded = $("excl").value.split(",").map(s => s.trim()).filter(Boolean);
     document.querySelectorAll("[data-zona]").forEach(i => { S.zona.on[i.dataset.zona] = i.checked; });
     S.tipos = { larga: $("tLarga").checked, sachet: $("tSachet").checked, special: $("tSpecial").checked,
@@ -885,6 +971,87 @@ function bindSettings() {
   };
   document.querySelectorAll(".settings input, .settings select").forEach(i => i.addEventListener("change", upd));
 }
+// ---------- Pestaña Descuentos ----------
+const TIPOS_MEDIO = [["billetera", "Billeteras"], ["banco", "Bancos"], ["beneficio", "Programas y beneficios"], ["tarjeta", "Tarjetas"]];
+function logoHTML(k) {
+  const m = MEDIOS[k] || { label: k };
+  return m.logo ? `<img class="logo" src="logos/${esc(m.logo)}.png" alt="${esc(m.label)}" title="${esc(m.label)}" loading="lazy">`
+    : `<span class="logotxt" title="${esc(m.label)}">${esc(m.label)}</span>`;
+}
+// Medios que aparecen en alguna promo (más Mercado Pago y MODO siempre), agrupados por tipo.
+function mediosDisponibles() {
+  const ks = new Set(["mercadopago", "modo"]);
+  (promosData?.promos || []).forEach(p => { ks.add(p.medio); if (p.banco) ks.add(p.banco); });
+  ks.delete("todos");
+  return [...ks].filter(k => MEDIOS[k]);
+}
+function renderMisMediosCfg() {
+  const on = Object.keys(S.medios).filter(k => S.medios[k] && MEDIOS[k]);
+  $("misMediosCfg").innerHTML = on.length ? on.map(logoHTML).join("") : `<span class="sub">Ninguno elegido.</span>`;
+}
+function renderPromos() {
+  const ks = mediosDisponibles();
+  $("mediosPick").innerHTML = TIPOS_MEDIO.map(([t, l]) => {
+    const g = ks.filter(k => MEDIOS[k].tipo === t).sort((a, b) => MEDIOS[a].label.localeCompare(MEDIOS[b].label));
+    return g.length ? `<div class="mediogrp">${l}</div><div class="medios">` + g.map(k =>
+      `<button class="medio ${S.medios[k] ? "on" : ""}" data-medio="${k}" title="${esc(MEDIOS[k].label)}"><span class="chk">${S.medios[k] ? "✓" : ""}</span>${logoHTML(k)}</button>`).join("") + `</div>` : "";
+  }).join("");
+  const set = (id, v) => $(id).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  set("pfQuien", S.pf.quien); set("pfSuper", S.pf.super); set("pfDonde", S.donde);
+  $("pfCuotas").checked = S.pf.cuotas;
+  const all = promosData?.promos || [];
+  const when = promosData ? new Date(promosData.updated).toLocaleString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : null;
+  $("promoInfo").innerHTML = when ? `Lo que publican Coto, Dia y Carrefour en sus webs (actualizado el ${when}). Los reintegros pueden tener exclusiones: mirá el detalle.`
+    : "Todavía no hay datos de descuentos (se bajan solos; probá “Actualizar descuentos”).";
+  const ok = p => (S.pf.cuotas || p.pct) && (!S.pf.super || p.super === S.pf.super) && enDonde(p) && (S.pf.quien === "todos" || aplica(p));
+  const orden = (a, b) => aplica(b) - aplica(a) || (b.pct || 0) - (a.pct || 0) || (b.cuotas || 0) - (a.cuotas || 0) || STORES.indexOf(a.super) - STORES.indexOf(b.super);
+  // Un grupo por día empezando por hoy; las que valen todos los días van aparte al final.
+  const grupos = [];
+  for (let i = 0; i < 7; i++) {
+    const d = (todayIdx + i) % 7, f = fechaDe(d);
+    const ps = all.filter(p => ok(p) && p.dias.length < 7 && p.dias.includes(d) && vigente(p, f)).sort(orden);
+    const nombre = i === 0 ? "Hoy" : i === 1 ? "Mañana" : DAYS_FULL[d][0].toUpperCase() + DAYS_FULL[d].slice(1);
+    grupos.push({ t: nombre, sub: (i < 2 ? DAYS_FULL[d] + " " : "") + f.slice(8) + "/" + f.slice(5, 7), ps });
+  }
+  grupos.push({ t: "Todos los días", sub: "", ps: all.filter(p => ok(p) && p.dias.length === 7 && vigente(p, todayISO)).sort(orden) });
+  const vacio = S.pf.quien === "mios" && !Object.values(S.medios).some(Boolean)
+    ? "Elegí arriba los medios de pago que tenés, o tocá “Todos”." : "Sin descuentos.";
+  $("promoList").innerHTML = !all.length ? "" : grupos.map(g => `<div class="pday"><h3>${g.t}${g.sub ? ` <small>${esc(g.sub)}</small>` : ""}</h3>` +
+    (g.ps.length ? g.ps.map(promoHTML).join("") : `<div class="empty">${vacio}</div>`) + `</div>`).join("");
+}
+function promoHTML(p) {
+  const fd = s => s.slice(8) + "/" + s.slice(5, 7);
+  const cond = [
+    p.local && p.online ? "local y online" : p.local ? "en el local" : p.online ? "online" : esc(p.tiendas || ""),
+    p.tope ? (p.tope === "Sin tope" ? "<b>sin tope</b>" : esc(p.tope.replace(/^Tope/, "tope"))) : "",
+    p.minimo ? `compra mín. ${fmt(p.minimo)}` : "",
+    p.soloSinOferta ? "<b>solo productos sin oferta</b>" : "",
+    p.acumulable ? "acumulable" : "",
+    p.hasta ? `hasta el ${fd(p.hasta)}` : "",
+  ].filter(Boolean).join(" · ");
+  return `<div class="promo ${aplica(p) ? "mine" : ""}">
+    <div class="plogos">${logoHTML(p.medio)}${p.banco ? logoHTML(p.banco) : ""}</div>
+    <div><div class="ptit"><span class="tag ${p.super}">${storeName(p.super)}</span> <b>${esc(medioLabel(p))}</b>${aplica(p) && p.medio !== "todos" ? ` <span class="tag good">✓ lo tenés</span>` : ""}</div>
+      <div class="pcond">${cond}</div>
+      <details><summary>Detalle</summary><div class="legal">${esc(p.resumen)}${p.cuando ? "\n" + esc(p.cuando) : ""}${p.tiendas ? "\nVale en: " + esc(p.tiendas) : ""}${p.desde ? `\nVigencia: ${fd(p.desde)}${p.hasta ? " al " + fd(p.hasta) : ""}` : ""}
+${p.legal ? "\n" + esc(p.legal) : ""}
+<a href="${esc(p.url)}" target="_blank" rel="noopener">Ver en la web de ${storeName(p.super)}</a></div></details></div>
+    <div class="ppct">${p.pct ? `${p.pct}%<small>de descuento</small>` : `${p.cuotas}<small>cuotas sin interés</small>`}</div>
+  </div>`;
+}
+$("mediosPick").onclick = ev => {
+  const b = ev.target.closest("[data-medio]"); if (!b) return;
+  const k = b.dataset.medio; S.medios[k] = !S.medios[k]; if (!S.medios[k]) delete S.medios[k];
+  saveSettings(); render();
+};
+const segClick = (id, fn) => { $(id).onclick = ev => { const b = ev.target.closest("button[data-v]"); if (!b) return; fn(b.dataset.v); saveSettings(); render(); }; };
+segClick("pfQuien", v => { S.pf.quien = v; });
+segClick("pfSuper", v => { S.pf.super = v; });
+segClick("pfDonde", v => { S.donde = v; $("donde").value = v; });
+$("pfCuotas").onchange = () => { S.pf.cuotas = $("pfCuotas").checked; saveSettings(); render(); };
+$("goPromos").onclick = () => { setCat(PROMOS); scrollTo(0, 0); };
+$("daynote").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (c) { setCat(c); scrollTo(0, 0); } };
+
 // En el celular no hay "hover": tocar una etiqueta de stock muestra el detalle por local.
 document.addEventListener("click", ev => {
   const t = ev.target.closest(".stock span[title]"); if (t) alert(t.title);
@@ -936,7 +1103,9 @@ $("fDate").value = todayISO;
 $("q").value = query;
 bindSettings();
 render();
-refresh();
+// Los descuentos se cargan aparte (los usan todas las pestañas para el precio del día).
+loadPromos().then(render);
+if (cat !== PROMOS) refresh();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
