@@ -4,14 +4,14 @@ Guía para trabajar en este repo. La app y el código están en castellano (riop
 
 ## Qué es
 
-**SuperScrap**: web app (PWA) sin build ni dependencias que compara precios de **Coto**, **Dia** y **Carrefour** (Argentina) y muestra los 3 productos más baratos de cada súper, con y sin promo, según el día de la semana (descuento de fin de semana de Coto, Club Dia por día).
+**SuperScrap**: web app (PWA) sin build ni dependencias que compara precios de **Coto**, **Dia** y **Carrefour** (Argentina) y muestra los 4 productos más baratos de cada súper (`TOP_N` en `index.html`), con y sin promo, según el día de la semana (descuento de fin de semana de Coto, Club Dia por día).
 
 Pestañas (categorías fijas, definidas en `categorias.js`):
 - 🥛 **Leches** (enteras/descremadas, con filtros propios de tipo: larga vida, sachet, especiales).
 - ☕ **Café molido**: solo los que dicen *tostado* en el nombre (o marcas que solo venden tostado: Café Martínez, Seattle's Best, Happy Day). Excluye *torrado*, cápsulas, saquitos e instantáneo. Los "Café Molido ... Intenso" sin aclarar se ocultan porque suelen ser torrados.
 - 🐟 **Atún en lomitos**: solo "lomitos"/"lomos", sin desmenuzado.
 - 🌱 **Milanesas de soja Granja del Sol**.
-- 🧻 **Papel higiénico hoja simple** y **doble hoja** (dos pestañas, para no comparar una contra otra): precio **por metro**. Solo entran los que dicen en el nombre "simple"/"S/H" o "doble hoja"/"D/H" ("doble textura" no cuenta).
+- 🧻 **Papel higiénico hoja simple** y **doble hoja** (dos pestañas, para no comparar una contra otra): precio **por metro**. Solo entran los que dicen en el nombre "simple"/"S/H" o "doble hoja"/"D/H" ("doble textura" no cuenta). Cada producto muestra la cuenta (`p.detalle`, de `parseMetrosDetalle`/`tamanoCoto`): "4 rollos × 30 m = 120 m" o "12 m² según Coto ≈ 120 m". Auditado el 23/11/2026: los 97 papeles dan rollos × metros correctos y, en Coto, el precio por m² coincide con los metros del nombre.
 - 🔎 **Buscar**: búsqueda libre del usuario con la misma lógica (ver abajo).
 
 ## Archivos

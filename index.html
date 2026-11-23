@@ -133,7 +133,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
   <header>
     <div>
       <h1 id="title">🛒 SuperScrap</h1>
-      <div class="sub">Coto, Dia y Carrefour: los 3 más baratos, con y sin promo, según el día</div>
+      <div class="sub">Coto, Dia y Carrefour: los 4 más baratos, con y sin promo, según el día</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="status" class="status"></span>
@@ -264,6 +264,7 @@ const { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar } = window.SuperScrapCat
 // Lectura de tamaños, promos y precios (compartido con scrape.js e historico.html).
 const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat } = window.SuperScrapComun;
 const SEARCH = "busqueda"; // pestaña de búsqueda libre
+const TOP_N = 4;           // cuántos productos se muestran por súper en los rankings
 // Servidor local (iniciar.bat). Si la página se abre con doble clic (file://) se lo busca acá.
 const LOCAL_SERVER = "http://localhost:8787";
 const FETCH_TIMEOUT = 15000; // ms por intento, para que un súper lento no deje la app colgada
@@ -426,11 +427,11 @@ function cotoRecords(j) {
 // Tamaño según la categoría (kg/L, metros de papel, o 1 L por defecto en leches). null = desconocido.
 function sizeFor(name) {
   const s = tamano(name, cat === SEARCH ? null : CATEGORIAS[cat]);
-  return s ? { size: s.size, unit: s.unit } : { size: null, unit: null };
+  return s ? { size: s.size, unit: s.unit, detalle: s.detalle || null } : { size: null, unit: null };
 }
 function sizeCoto(name, o) {
   const s = tamanoCoto(name, cat === SEARCH ? null : CATEGORIAS[cat], o);
-  return s ? { size: s.size, unit: s.unit } : { size: null, unit: null };
+  return s ? { size: s.size, unit: s.unit, detalle: s.detalle || null } : { size: null, unit: null };
 }
 function normCoto(r) {
   const a = r.records?.[0]?.attributes; if (!a) return null;
@@ -676,7 +677,7 @@ function render() {
   const list = filtered().map(p => ({ p, x: priceFor(p, selDay) }));
   const by = (store, mode) => list.filter(e => e.p.store === store).sort((a, b) => cmp(a, b, mode));
   const top = { one: {}, best: {} };
-  STORES.forEach(s => { top.one[s] = by(s, "one").slice(0, 3); top.best[s] = by(s, "best").slice(0, 3); });
+  STORES.forEach(s => { top.one[s] = by(s, "one").slice(0, TOP_N); top.best[s] = by(s, "best").slice(0, TOP_N); });
   renderRank($("rankOne"), top.one, "one");
   renderRank($("rankPromo"), top.best, "best");
   renderVerdicts(top);
@@ -724,7 +725,7 @@ function itemHTML(e, i, mode, isWin) {
     <div class="rank">${i + 1}</div>
     ${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : "<div></div>"}
     <div><div class="name"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a></div>
-      <div class="note">${esc(note) || "precio regular"}${pu ? ` · ${pu}` : ""}</div>${stockHTML(p)}</div>
+      <div class="note">${esc(note) || "precio regular"}${pu ? ` · ${pu}` : ""}</div>${p.detalle ? `<div class="note">📏 ${esc(p.detalle)}</div>` : ""}${stockHTML(p)}</div>
     <div class="p">${showShelf ? `<s>${fmt(p.shelf)}</s><br>` : ""}<b>${fmt(price)}</b>${mode === "best" && x.bestQty > 1 ? `<div class="note">c/u x${x.bestQty}</div>` : ""}</div>
   </div>`;
 }
@@ -801,7 +802,7 @@ function renderAll(all) {
     <td><span class="tag ${p.store}">${storeName(p.store)}</span></td>
     <td><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(p.name)}</a></td>
     <td class="n">${fmt(p.shelf)}</td><td class="n">${fmt(x.one)}</td>
-    <td class="n">${x.oneU != null ? `${fmt(x.oneU)}/${unitOf(p)}` : "—"}</td>
+    <td class="n">${x.oneU != null ? `${fmt(x.oneU)}/${unitOf(p)}` : "—"}${p.detalle ? `<div class="sub">${esc(p.detalle)}</div>` : ""}</td>
     <td class="n">${x.best < x.one - 0.5 ? fmt(x.best) : "—"}</td>
     <td>${esc(x.best < x.one - 0.5 ? x.bestNote : x.oneNote)}</td><td>${stockHTML(p)}</td></tr>`).join("");
   $("allTable").innerHTML = `<tr><th></th><th>Producto</th><th class="n">Web</th><th class="n">1 unidad (día)</th><th class="n">Por kg/L</th><th class="n">Con promo c/u</th><th>Detalle</th><th>Stock zona</th></tr>` + rows;

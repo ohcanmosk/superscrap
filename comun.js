@@ -25,10 +25,14 @@
   // Papel higiénico: metros totales del paquete = metros por rollo × rollos.
   // Entiende "30 mts 4 Ud.", "4 x 30 mts", "x12 30 mts", "4 u. x 20 m.", "4 rollos de 30m", "30 M 4 Un", "x 120 mts".
   // Coto a veces pone el área del paquete ("Paq 12 M2"): con rollos de 10 cm de ancho, 12 m² = 120 m.
-  // null si no dice los metros.
-  function parseMetros(name) {
+  // Devuelve { total, detalle } (detalle = la cuenta para mostrar: "4 rollos × 30 m = 120 m"), o null.
+  const fmtM = v => String(Math.round(v * 10) / 10).replace(".", ",");
+  function parseMetrosDetalle(name) {
     const area = norm(name).match(/(?:paq|bol)\.?\s*(\d+(?:[.,]\d+)?)\s*m2\b/);
-    if (area) return parseFloat(area[1].replace(",", ".")) * 10;
+    if (area) {
+      const m2 = parseFloat(area[1].replace(",", "."));
+      return { total: m2 * 10, detalle: `${fmtM(m2)} m² ≈ ${fmtM(m2 * 10)} m (rollos de 10 cm)` };
+    }
     const n = norm(name).replace(/\bm2\b/g, " ");
     const m = n.match(/(\d+(?:[.,]\d+)?)\s*(?:metros?|mtrs?|mts?|m)(?![a-z0-9])\.?/);
     if (!m) return null;
@@ -37,11 +41,13 @@
     const resto = n.slice(0, m.index) + " " + n.slice(m.index + m[0].length);
     const r = resto.match(/(\d+)\s*(?:u\b|u\.|un\b|uni\b|unid\w*|ud\b|ud\.|rollos?)/) ||
               resto.match(/\bx\s*(\d+)\b/) || resto.match(/\b(\d+)\s*x\b/);
-    return metros * (r ? +r[1] : 1);
+    const rollos = r ? +r[1] : 1;
+    return { total: metros * rollos, detalle: `${rollos} rollo${rollos === 1 ? "" : "s"} × ${fmtM(metros)} m = ${fmtM(metros * rollos)} m` };
   }
+  const parseMetros = name => parseMetrosDetalle(name)?.total ?? null;
   // Tamaño según la categoría: c.medida = "metros" (papel), c.porDefecto (leches: 1 L si no lo dice).
   function tamano(name, c) {
-    if (c && c.medida === "metros") { const m = parseMetros(name); return m ? { size: m, unit: "m" } : null; }
+    if (c && c.medida === "metros") { const m = parseMetrosDetalle(name); return m ? { size: m.total, unit: "m", detalle: m.detalle } : null; }
     const s = parseSize(name);
     if (c && c.porDefecto) return { size: s && s.unit === c.unit ? s.size : c.porDefecto, unit: c.unit };
     return s;
@@ -96,7 +102,12 @@
   // Tamaño de un producto de Coto: en papel higiénico se usa su precio por m² (precio ÷ precio por m² = m²;
   // rollos de 10 cm de ancho → m² × 10 = metros), que está aunque el nombre no diga los metros.
   function tamanoCoto(name, c, o) {
-    if (c && c.medida === "metros" && o && o.ref) return { size: Math.round(o.shelf / o.ref * 10), unit: "m" };
+    if (c && c.medida === "metros" && o && o.ref) {
+      const m2 = o.shelf / o.ref, total = Math.round(m2 * 10), del = parseMetrosDetalle(name);
+      // Si el nombre trae rollos × metros y coincide, se muestra esa cuenta; si no, la de Coto por m².
+      return { size: total, unit: "m", detalle: del && Math.abs(del.total - total) < 1 && !/m²/.test(del.detalle) ? del.detalle
+        : `${fmtM(m2)} m² según Coto ≈ ${fmtM(total)} m (rollos de 10 cm)` };
+    }
     return tamano(name, c);
   }
 
@@ -109,7 +120,7 @@
     return true;
   }
 
-  const api = { numAR, norm, parseSize, parseMetros, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat };
+  const api = { numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapComun = api;
 })(this);
