@@ -87,10 +87,6 @@ th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertic
 th{color:var(--muted);font-weight:600;font-size:12px}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tablewrap{overflow-x:auto}
-.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end;margin-top:12px}
-.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
-.form label.wide{grid-column:span 2}
-@media (max-width:500px){.form label.wide{grid-column:auto}}
 details summary{cursor:pointer;font-weight:700;font-size:16px}
 .settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:12px}
 .settings fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0}
@@ -101,8 +97,6 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .wkgrid input{width:100%;text-align:center;padding:4px 2px}
 .status{font-size:13px;color:var(--muted)}
 .status.err{color:var(--dia)}
-.del{background:none;color:var(--muted);padding:2px 6px;font-weight:400}
-.pos{color:var(--dia)} .neg{color:var(--good)}
 .empty{color:var(--muted);font-size:13px;padding:8px 0}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 .tab{background:var(--chip);color:var(--ink);font-weight:500;white-space:nowrap;border-radius:999px;padding:8px 14px}
@@ -152,9 +146,35 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .promo.habitual{border:1.5px dashed var(--warn);border-radius:8px;margin-top:6px;background:var(--warn-soft)}
 .promo.habitual .ppct{color:var(--warn)}
 @media (max-width:500px){.promo{grid-template-columns:76px 1fr auto;gap:8px}.logo{max-width:72px;height:22px}.ppct{font-size:19px}}
-.grid2>*,.cols>*,.form>*,.item>*,.settings>*{min-width:0}
-.form select,.form input{width:100%}
-#insitu td:nth-child(3){min-width:150px}
+.grid2>*,.cols>*,.item>*,.settings>*{min-width:0}
+/* Celular: vista compacta para que los dos ganadores se vean sin bajar */
+@media (max-width:600px){
+  .hidemob{display:none !important}
+  .wrap{padding-top:12px !important}
+  header{gap:4px 6px;margin-bottom:10px;flex-wrap:wrap}
+  header>div:first-child{flex:1 1 0;min-width:0}
+  header>div:last-child{display:contents !important}
+  h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header .ghostlink,header button{padding:7px 10px;font-size:13px}
+  #status{order:3;flex-basis:100%;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tabs{gap:5px;margin-bottom:10px}
+  .tab{padding:5px 10px;font-size:13px}
+  .card{margin-bottom:10px}
+  .days{flex-wrap:nowrap;gap:4px}
+  .day{flex:1;padding:6px 0;text-align:center;font-size:12px}
+  .daynote{margin-top:8px;gap:5px}
+  .daynote .tag{font-size:11px}
+  .zonatoggle{margin-top:8px;font-size:13px}
+  .zonatoggle input{width:16px;height:16px}
+  h2{font-size:15px;margin-bottom:8px}
+  .grid2{gap:8px}
+  .verdict{padding:10px 12px}
+  .verdict h3{margin-bottom:2px;font-size:11px}
+  .verdict .store{font-size:16px}
+  .verdict .price{font-size:22px !important;line-height:1.2}
+  .verdict .pname{font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .verdict .vs{font-size:11px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
 @media (max-width:500px){
   .wrap{padding:14px 12px 40px} .card{padding:12px} .verdict .price{font-size:24px}
   header>div:last-child{width:100%;justify-content:space-between}
@@ -166,12 +186,12 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
   <header>
     <div>
       <h1 id="title">🛒 SuperScrap</h1>
-      <div class="sub">Coto, Dia y Carrefour: los 4 más baratos, con y sin promo, según el día</div>
+      <div class="sub hidemob">Coto, Dia y Carrefour: los 4 más baratos, con y sin promo, según el día</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="status" class="status"></span>
-      <a class="ghostlink" href="historico.html" title="Cómo variaron los precios en los últimos 40 días">📈 Histórico</a>
-      <button id="btnRefresh">Actualizar precios</button>
+      <a class="ghostlink" href="historico.html" title="Cómo variaron los precios en los últimos 40 días">📈<span class="hidemob"> Histórico</span></a>
+      <button id="btnRefresh">↻ Actualizar<span class="hidemob"> precios</span></button>
     </div>
   </header>
 
@@ -197,11 +217,11 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
   </section>
 
   <section class="card">
-    <h3>Día de compra</h3>
+    <h3 class="hidemob">Día de compra</h3>
     <div class="days" id="days"></div>
     <div class="daynote" id="daynote"></div>
     <label class="zonatoggle"><input type="checkbox" id="zonaOnly"> Solo con stock en mi zona</label>
-    <div class="sub" id="zonaNote"></div>
+    <div class="sub hidemob" id="zonaNote"></div>
   </section>
 
   <section class="card">
@@ -219,21 +239,6 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
     <h2>Con promo · mejor precio por unidad</h2>
     <div class="sub" style="margin:-6px 0 10px">Precio por unidad aprovechando la promo (2da al 50%, llevando 2, 3x2…). Si la promo no conviene, se usa el precio de 1 unidad.</div>
     <div class="cols" id="rankPromo"></div>
-  </section>
-
-  <section class="card">
-    <h2>Góndola vs online</h2>
-    <div class="sub" style="margin:-6px 0 10px">Lo que viste en el local comparado con el precio de la web ese día y hoy.</div>
-    <div class="tablewrap"><table id="insitu"></table></div>
-    <div class="form" id="insituForm">
-      <label>Fecha<input type="date" id="fDate"></label>
-      <label>Súper<select id="fStore"><option value="coto">Coto</option><option value="dia">Dia</option><option value="carrefour">Carrefour</option></select></label>
-      <label class="wide">Producto (de la web)<select id="fProd"></select></label>
-      <label>Precio góndola $<input type="number" step="0.01" id="fShelf" placeholder="2799"></label>
-      <label>Precio c/promo c/u $<input type="number" step="0.01" id="fPromo" placeholder="opcional"></label>
-      <label>Nota promo<input type="text" id="fNote" placeholder="2da al 50%"></label>
-      <button id="fAdd">Agregar</button>
-    </div>
   </section>
 
   <section class="card">
@@ -328,15 +333,6 @@ const DEFAULT_SETTINGS = {
   zona: { only: false, on: {} },
 };
 const isDesc = p => /descrem|liviana|semi|\b[012]\s*%/i.test(p.name) || /descrem/i.test(p.cat);
-const SEED_INSITU = [
-  { id: "seed-coto", date: "2026-11-22", store: "coto", productId: "sku00527739",
-    label: "Leche Entera Larga Vida Ilolay 1 L", shelf: 2799, promo: 2099.5, note: "2da unidad al 50%",
-    onlineShelf: 2799, onlinePromo: 2099.25 },
-  { id: "seed-dia", date: "2026-11-22", store: "dia", productId: "608",
-    label: "Leche Entera DIA Larga Vida 3% 1 L", shelf: 2390, promo: null, note: "",
-    onlineShelf: 2390, onlinePromo: null },
-];
-
 // ---------- Estado / storage ----------
 const store = {
   get(k, d) { try { const v = localStorage.getItem("superscrap:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -368,7 +364,6 @@ const addExcl = words => {
 };
 let products = store.get(cacheKey(cat, "products"), []);
 let fetchedAt = store.get(cacheKey(cat, "fetchedAt"), null);
-let insitu = store.get("insitu", null) || structuredClone(SEED_INSITU);
 const todayIdx = (() => {
   const s = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(new Date());
   return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(s);
@@ -798,7 +793,6 @@ function render() {
   renderRank($("rankPromo"), top.best, "best");
   renderVerdicts(top);
   renderAll(list);
-  renderInsitu();
   renderZona(list);
   if (cat === SEARCH) renderExcl(list.length);
 }
@@ -823,22 +817,28 @@ function renderTabs() {
   $("searchCard").classList.toggle("hidden", cat !== SEARCH);
   $("prodView").classList.toggle("hidden", cat === PROMOS);
   $("promoView").classList.toggle("hidden", cat !== PROMOS);
-  $("btnRefresh").textContent = cat === PROMOS ? "Actualizar descuentos" : "Actualizar precios";
+  $("btnRefresh").innerHTML = `↻ Actualizar<span class="hidemob"> ${cat === PROMOS ? "descuentos" : "precios"}</span>`;
   $("lecheFilters").classList.toggle("hidden", cat !== "leche");
 }
 function renderDays() {
   $("days").innerHTML = [1,2,3,4,5,6,0].map(d =>
-    `<button class="day ${d === selDay ? "on" : ""} ${d === todayIdx ? "today" : ""}" data-d="${d}">${DAYS[d]}${d === todayIdx ? " (hoy)" : ""}</button>`).join("");
-  // El mejor descuento con mis medios de pago en cada súper ese día.
-  $("daynote").innerHTML = STORES.map(st => {
+    `<button class="day ${d === selDay ? "on" : ""} ${d === todayIdx ? "today" : ""}" data-d="${d}">${DAYS[d]}${d === todayIdx ? `<span class="hidemob"> (hoy)</span>` : ""}</button>`).join("");
+  // El mejor descuento con mis medios de pago en cada súper ese día (corto; el detalle en el tooltip).
+  const tags = STORES.map(st => {
     const x = pagosDe(st, selDay)[0], cup = cuponesDe(st, selDay)[0];
-    if (cup) return `<span class="tag ${st}">${storeName(st)}: −${pctDe(cup)}% cupón ${esc(medioLabel(cup))}${x ? ` + −${x.pct}% ${esc(medioLabel(x))}` : ""}</span>`;
-    const h = !x && habitualesDe(selDay, h => h.super === st && enDonde(h) && aplica(h))[0];
-    if (h) return `<span class="tag warn" title="Suele haber, pero todavía no está publicada: no se aplica a los precios">${storeName(st)}: posible ${pctDe({ ...h, pct: h.ultimoPct }) ? "−" + pctDe({ ...h, pct: h.ultimoPct }) + "% " : ""}${h.cupon ? "cupón " : ""}${esc(medioLabel(h))} (sin confirmar)</span>`;
-    return `<span class="tag ${x ? st : ""}">${storeName(st)}: ${x ? `−${x.pct}% ${esc(medioLabel(x))}` +
-      (x.minimo ? ` (mín. ${fmt(x.minimo)})` : "") + (x.soloSinOferta ? " en productos sin oferta" : "") : "sin descuento con tus medios"}</span>`;
-  }).join("") + `<button class="tag tagbtn" data-cat="${PROMOS}">💳 ver todos los descuentos</button>` +
-    (selDay !== todayIdx ? `<span class="tag warn">Simulando ${DAYS_FULL[selDay]} con precios de hoy</span>` : "");
+    const partes = [cup && `−${pctDe(cup)}% ${medioLabel(cup)}`, x && `−${x.pct}% ${medioLabel(x)}`].filter(Boolean);
+    if (partes.length) {
+      const tip = [x?.minimo && `compra mín. ${fmt(x.minimo)}`, x?.soloSinOferta && "solo productos sin oferta"].filter(Boolean).join(" · ");
+      return `<span class="tag ${st}" title="${esc(tip)}">${storeName(st)} ${esc(partes.join(" + "))}</span>`;
+    }
+    const h = habitualesDe(selDay, h => h.super === st && enDonde(h) && aplica(h))[0];
+    const hp = h && pctDe({ ...h, pct: h.ultimoPct });
+    if (h) return `<span class="tag warn" title="Suele haber, pero todavía no está publicada: no se aplica a los precios">${storeName(st)} ¿${hp ? "−" + hp + "% " : ""}${esc(medioLabel(h))}?</span>`;
+    return "";
+  }).filter(Boolean);
+  $("daynote").innerHTML = (tags.length ? tags.join("") : `<span class="tag">Sin descuentos con tus medios</span>`) +
+    `<button class="tag tagbtn" data-cat="${PROMOS}">💳 descuentos</button>` +
+    (selDay !== todayIdx ? `<span class="tag warn" title="Simulando ${DAYS_FULL[selDay]} con precios de hoy">precios de hoy</span>` : "");
 }
 function itemHTML(e, i, mode, isWin) {
   const { p, x } = e; const price = mode === "one" ? x.one : x.best;
@@ -881,7 +881,7 @@ function renderVerdicts(top) {
       <h3>${title}</h3>
       <div class="store">${storeName(win.p.store)}</div>
       <div class="price">${fmt(win.x[pk])}${pu ? ` <span class="sub">(${pu})</span>` : ""}</div>
-      <div>${esc(win.p.name)}${qty}</div>${stockHTML(win.p)}
+      <div class="pname">${esc(win.p.name)}${qty}</div>${stockHTML(win.p)}
       ${lose ? `<div class="vs">${diff < 0.5 ? "Empate con" : `${fmt(diff)}${k === key ? "/" + unitOf(win.p) : ""} (${(diff / lose.x[k] * 100).toFixed(1)}%) más barato que`} lo mejor de ${storeName(lose.p.store)}: ${esc(lose.p.name)} a ${fmt(lose.x[pk])}</div>` : ""}
     </div>`;
   };
@@ -931,61 +931,6 @@ function renderAll(all) {
     <td>${esc(x.best < x.one - 0.5 ? x.bestNote : x.oneNote)}</td><td>${stockHTML(p)}</td></tr>`).join("");
   $("allTable").innerHTML = `<tr><th></th><th>Producto</th><th class="n">Web</th><th class="n">1 unidad (día)</th><th class="n">Por kg/L</th><th class="n">Con promo c/u</th><th>Detalle</th><th>Stock zona</th></tr>` + rows;
 }
-
-// ---------- Góndola vs online ----------
-function diffCell(a, b) {
-  if (a == null || b == null) return "—";
-  const d = a - b; if (Math.abs(d) < 1) return `<span class="tag good">igual</span>`;
-  return `<span class="${d > 0 ? "pos" : "neg"}">${d > 0 ? "+" : ""}${fmt(d)} (${(d / b * 100).toFixed(1)}%)</span>`;
-}
-// Cada registro guarda su categoría (los viejos, sin "cat", son de leches). Se muestran los de la pestaña actual.
-const entryCat = e => e.cat || "leche";
-function renderInsitu() {
-  const rows = insitu.filter(e => entryCat(e) === cat).sort((a, b) => b.date.localeCompare(a.date)).map(e => {
-    const now = products.find(p => p.store === e.store && p.id === e.productId);
-    const nowPromo = now ? Math.min(...now.promos.map(x => x.unit), Infinity) : null;
-    return `<tr>
-      <td>${e.date.split("-").reverse().join("/")}</td>
-      <td><span class="tag ${e.store}">${storeName(e.store)}</span></td>
-      <td>${esc(e.label)}${e.note ? `<div class="sub">${esc(e.note)}</div>` : ""}</td>
-      <td class="n">${fmt(e.shelf)}${e.promo ? `<div class="sub">promo ${fmt(e.promo)}</div>` : ""}</td>
-      <td class="n">${fmt(e.onlineShelf)}${e.onlinePromo ? `<div class="sub">promo ${fmt(e.onlinePromo)}</div>` : ""}</td>
-      <td class="n">${diffCell(e.shelf, e.onlineShelf)}${e.promo && e.onlinePromo ? `<div class="sub">${diffCell(e.promo, e.onlinePromo)}</div>` : ""}</td>
-      <td class="n">${now ? fmt(now.shelf) + (isFinite(nowPromo) ? `<div class="sub">promo ${fmt(nowPromo)}</div>` : "") : "—"}</td>
-      <td><button class="del" data-del="${esc(e.id)}" title="Borrar">✕</button></td></tr>`;
-  }).join("");
-  $("insitu").innerHTML = `<tr><th>Fecha</th><th></th><th>Producto</th><th class="n">Góndola</th><th class="n">Web ese día</th><th class="n">Góndola − web</th><th class="n">Web hoy</th><th></th></tr>` +
-    (rows || `<tr><td colspan="8" class="empty">Sin registros.</td></tr>`);
-  fillProdSelect();
-}
-function fillProdSelect() {
-  const s = $("fStore").value, cur = $("fProd").value;
-  const c = conf();
-  const opts = products.filter(p => p.store === s && matchesCat(p, c)).sort((a, b) => a.shelf - b.shelf);
-  $("fProd").innerHTML = opts.map(p => `<option value="${esc(p.id)}">${esc(p.name)} — ${fmt(p.shelf)}</option>`).join("") ||
-    `<option value="">(actualizá precios primero)</option>`;
-  if (opts.some(p => p.id === cur)) $("fProd").value = cur;
-}
-$("fStore").onchange = fillProdSelect;
-$("fAdd").onclick = () => {
-  const p = products.find(x => x.store === $("fStore").value && x.id === $("fProd").value);
-  const shelf = parseFloat($("fShelf").value);
-  if (!p || !shelf) { alert("Elegí un producto y cargá el precio de góndola."); return; }
-  const date = $("fDate").value || todayISO;
-  const promoNow = p.promos.length ? Math.min(...p.promos.map(x => x.unit)) : null;
-  const isToday = date === todayISO;
-  insitu.push({ id: "e" + Date.now(), cat, date, store: p.store, productId: p.id, label: p.name, shelf,
-    promo: parseFloat($("fPromo").value) || null, note: $("fNote").value.trim(),
-    onlineShelf: isToday ? p.shelf : null, onlinePromo: isToday ? promoNow : null });
-  store.set("insitu", insitu);
-  $("fShelf").value = $("fPromo").value = $("fNote").value = "";
-  renderInsitu();
-};
-$("insitu").onclick = ev => {
-  const id = ev.target.dataset?.del; if (!id) return;
-  if (!confirm("¿Borrar este registro?")) return;
-  insitu = insitu.filter(e => e.id !== id); store.set("insitu", insitu); renderInsitu();
-};
 
 // ---------- Configuración ----------
 function bindSettings() {
@@ -1155,7 +1100,6 @@ $("exclChips").onclick = ev => {
 };
 
 // ---------- Inicio ----------
-$("fDate").value = todayISO;
 // Búsquedas guardadas por versiones anteriores podían tener "-palabras" en el texto.
 { const sq = splitQuery(query); if (sq.neg.length) { query = sq.pos; store.set("query", query); addExcl(sq.neg); } }
 $("q").value = query;

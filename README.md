@@ -35,7 +35,7 @@ La primera vez Windows puede preguntar si permite a Node en la red: aceptá "Red
 
 En la versión web, Coto se consulta en vivo desde el celular. Dia no permite consultas directas desde el navegador,
 así que usa la copia que guarda GitHub dos veces por día (la app indica la hora de esa copia).
-Los registros de góndola y la configuración se guardan por dispositivo (los de la PC no pasan al celular).
+La configuración se guarda por dispositivo (los de la PC no pasan al celular).
 
 ## De dónde salen los datos
 
@@ -69,4 +69,4 @@ Las categorías fijas se configuran en `categorias.js`.
 - Marcas excluidas: TREGAR por defecto (editable).
 - Leches: se excluyen chocolatadas, en polvo, condensadas, infantiles y vegetales. Las "especiales" (0% lactosa, proteína, etc.) se pueden activar.
 
-Configuración, registros de góndola y últimos precios se guardan en el navegador (localStorage).
+La configuración y los últimos precios se guardan en el navegador (localStorage).

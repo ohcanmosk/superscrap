@@ -107,7 +107,7 @@ En "Todos los productos" hay chips por marca (con cantidad), multi-selección; "
 
 ## Estado en el navegador (localStorage, prefijo `superscrap:`)
 
-- `settings` (medios de pago `medios`, `donde`, filtros de Descuentos `pf`, zona, filtros), `promos` (último `data/promos.json`), `cat` (pestaña actual), `query` (última búsqueda, solo palabras a buscar), `queryExcl` (palabras quitadas), `insitu` (registros "góndola vs online", cada uno con su `cat`; los viejos sin `cat` son de leches).
+- `settings` (medios de pago `medios`, `donde`, filtros de Descuentos `pf`, zona, filtros), `promos` (último `data/promos.json`), `cat` (pestaña actual), `query` (última búsqueda, solo palabras a buscar), `queryExcl` (palabras quitadas).
 - Caché de productos por categoría: `products` / `fetchedAt` para leches (claves históricas) y `products:<cat>` / `fetchedAt:<cat>` para el resto (incluye `busqueda`).
 - Los productos guardados de versiones viejas tenían `liters`; `loadProducts` los migra a `size`/`unit`.
 

@@ -56,7 +56,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:right;padding:6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12px}
-td.best{background:var(--good-soft);color:var(--good);font-weight:700}
+/* Día más barato de la semana: bien marcado (fondo, borde y estrella) */
+td.best{background:var(--good-soft);color:var(--good);font-weight:800;box-shadow:inset 0 0 0 2px var(--good);border-radius:6px}
+td.best .star{margin-right:3px}
+/* Cuánto más caro que el día más barato: "(+14)" en verde al lado del precio */
+.pv{color:var(--good);font-weight:600;font-size:12px;margin-left:4px}
 td.worst{color:var(--muted)}
 td small{display:block;color:var(--muted);font-weight:400;font-size:11px}
 td.best small{color:inherit;opacity:.8}
@@ -115,7 +119,7 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
 
   <section class="card">
     <h2>¿Qué día de la semana conviene?</h2>
-    <div class="sub">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. En verde, el día más barato de cada súper; abajo, cuánto más caro está cada día respecto de ese.</div>
+    <div class="sub">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. Con ★ y recuadro verde, el día más barato de cada súper; al lado de cada precio, entre paréntesis, cuánto más caro está (en %) respecto de ese día. Ej.: (+14) = 14% más caro.</div>
     <h3>Sin promo</h3>
     <div class="tablewrap" id="semSin"></div>
     <h3>Con promo</h3>
@@ -196,6 +200,8 @@ const storesVis = () => F.super.length ? STORES.filter(s => F.super.includes(s))
 
 // "2026-11-23" → día de la semana (0 = domingo), sin problemas de zona horaria.
 const diaSemana = d => new Date(d + "T12:00:00Z").getUTCDay();
+// "(+14)": cuánto más caro (en %) que el día más barato de la semana.
+const varPct = pct => `<span class="pv">(+${Math.round(pct)})</span>`;
 const ddmm = d => d.slice(8, 10) + "/" + d.slice(5, 7);
 
 // ---------- Datos ----------
@@ -295,7 +301,8 @@ function render() {
       return `<tr><td><span class="dot" style="background:${color(s)}"></span>${NAME[s]}</td>` + ORDEN_SEMANA.map(w => {
         const x = avg[w]; if (!x) return `<td class="worst">—</td>`;
         const best = vals.length > 1 && x.v === lo, pct = (x.v / lo - 1) * 100;
-        return `<td class="${best ? "best" : ""}" title="${x.n} día${x.n === 1 ? "" : "s"} con datos">${fmt(x.v)}<small>${best ? "el más barato" : pct < 0.5 ? "igual" : "+" + pct.toFixed(1) + "%"}</small></td>`;
+        return `<td class="${best ? "best" : ""}" title="${x.n} día${x.n === 1 ? "" : "s"} con datos${best ? "" : ` · ${pct.toFixed(1)}% más caro que el día más barato`}">` +
+          (best ? `<span class="star">★</span>${fmt(x.v)}<small>el más barato</small>` : `${fmt(x.v)}${vals.length > 1 ? varPct(pct) : ""}`) + `</td>`;
       }).join("") + `<td>${vals.length ? ((hi / lo - 1) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
     });
     return `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}<th title="Diferencia entre el día más caro y el más barato">Variación</th></tr>${rows.join("")}</table>`;
@@ -340,7 +347,9 @@ function renderProducto(pd, dias_) {
   const fila = (m, titulo) => `<tr><td>${titulo}</td>${ORDEN_SEMANA.map(w => {
     const a = acc[w]; if (!a) return `<td class="worst">—</td>`;
     const v = avg(a[m]), best = Object.keys(acc).length > 1 && v === lo(m);
-    return `<td class="${best ? "best" : ""}" title="${a[m].length} día${a[m].length === 1 ? "" : "s"}">${fmt(v)}${best ? "<small>el más barato</small>" : ""}</td>`;
+    const pct = (v / lo(m) - 1) * 100, varios = Object.keys(acc).length > 1;
+    return `<td class="${best ? "best" : ""}" title="${a[m].length} día${a[m].length === 1 ? "" : "s"}">` +
+      (best ? `<span class="star">★</span>${fmt(v)}<small>el más barato</small>` : `${fmt(v)}${varios ? varPct(pct) : ""}`) + `</td>`;
   }).join("")}</tr>`;
   const promos = `<tr><td>Promos vistas</td>${ORDEN_SEMANA.map(w => {
     const a = acc[w]; if (!a) return `<td class="worst">—</td>`;
