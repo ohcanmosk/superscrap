@@ -149,6 +149,8 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .promo .legal{font-size:11px;color:var(--muted);max-height:200px;overflow:auto;margin-top:6px;white-space:pre-line}
 .promo .legal a{color:inherit}
 .tagbtn{cursor:pointer;border:0}
+.promo.habitual{border:1.5px dashed var(--warn);border-radius:8px;margin-top:6px;background:var(--warn-soft)}
+.promo.habitual .ppct{color:var(--warn)}
 @media (max-width:500px){.promo{grid-template-columns:76px 1fr auto;gap:8px}.logo{max-width:72px;height:22px}.ppct{font-size:19px}}
 .grid2>*,.cols>*,.form>*,.item>*,.settings>*{min-width:0}
 .form select,.form input{width:100%}
@@ -661,22 +663,27 @@ async function loadPromos() {
   } catch {}
 }
 
+// Precio del día. one = llevando 1 unidad; best = el mejor precio c/u (con promo del producto si conviene).
+// El descuento con medio de pago NO se suma a una promo del producto (2da al 50%, 2x1, "35% Dto"...),
+// salvo que la promo del medio de pago diga "acumulable" (ej. Carrefour + Mercado Pago): se elige lo que más convenga.
 function priceFor(p, d) {
-  let one = p.shelf; const notes = [];
-  if (p.list > p.shelf) notes.push("oferta, antes " + fmt(p.list));
-  // Coto: descuentos de 1 unidad ("35%Dto") que vienen en dtoDescuentos.
-  if (p.store === "coto") p.promos.filter(x => x.qty <= 1).forEach(x => { if (x.unit < one) { one = x.unit; notes.push(x.text); } });
-  let best = one, bestNote = notes.join(" · "), bestQty = 1;
-  p.promos.forEach(x => { if (x.unit < best) { best = x.unit; bestQty = x.qty; bestNote = x.text; } });
-  // Descuento con medio de pago del día: se aplica sobre lo que se paga (con o sin promo del producto).
   const pago = pagoPara(p, d);
-  if (pago) {
-    const k = 1 - pago.pct / 100, txt = `−${pago.pct}% ${medioLabel(pago)}`;
-    one *= k; best *= k;
-    notes.push(txt); bestNote = bestNote ? bestNote + " · " + txt : txt;
-  }
+  const k = pago ? 1 - pago.pct / 100 : 1, pagoTxt = pago ? `−${pago.pct}% ${medioLabel(pago)}` : "";
+  const suma = !!pago && pago.acumulable === true;
+  const conPago = c => pago && (!c.promo || suma) ? { ...c, v: c.v * k, notes: [...c.notes, pagoTxt] } : c;
+  const menor = cs => cs.reduce((m, c) => c.v < m.v - 0.005 ? c : m);
+  // 1 unidad: precio de góndola, o (Coto) descuentos de 1 unidad que vienen en dtoDescuentos.
+  const uno = [{ v: p.shelf, notes: [], qty: 1 }];
+  if (p.store === "coto") p.promos.filter(x => x.qty <= 1).forEach(x => uno.push({ v: x.unit, notes: [x.text], promo: true, qty: 1 }));
+  const uno2 = uno.flatMap(c => [c, conPago(c)]);
+  const o = menor(uno2);
+  const varios = p.promos.map(x => ({ v: x.unit, notes: [x.text], promo: true, qty: x.qty })).flatMap(c => [c, conPago(c)]);
+  const bst = menor(uno2.concat(varios));
+  const oferta = p.list > p.shelf ? ["oferta, antes " + fmt(p.list)] : [];
+  const oneNote = [...oferta, ...o.notes].join(" · ");
+  const best = bst.v, one = o.v;
   // Precio por kg/L (null si no se sabe el tamaño del envase).
-  return { one, oneNote: notes.join(" · "), best, bestNote, bestQty,
+  return { one, oneNote, best, bestNote: bst === o ? oneNote : bst.notes.join(" · "), bestQty: bst.qty,
     oneU: p.size ? one / p.size : null, bestU: p.size ? best / p.size : null };
 }
 // Orden: primero los de tamaño conocido por precio por kg/L; los de tamaño desconocido al final, por precio.
@@ -801,6 +808,8 @@ function renderDays() {
   // El mejor descuento con mis medios de pago en cada súper ese día.
   $("daynote").innerHTML = STORES.map(st => {
     const x = pagosDe(st, selDay)[0];
+    const h = !x && habitualesDe(selDay, h => h.super === st && enDonde(h) && aplica(h))[0];
+    if (h) return `<span class="tag warn" title="Suele haber, pero todavía no está publicada: no se aplica a los precios">${storeName(st)}: posible −${h.ultimoPct}% ${esc(medioLabel(h))} (sin confirmar)</span>`;
     return `<span class="tag ${x ? st : ""}">${storeName(st)}: ${x ? `−${x.pct}% ${esc(medioLabel(x))}` +
       (x.minimo ? ` (mín. ${fmt(x.minimo)})` : "") + (x.soloSinOferta ? " en productos sin oferta" : "") : "sin descuento con tus medios"}</span>`;
   }).join("") + `<button class="tag tagbtn" data-cat="${PROMOS}">💳 ver todos los descuentos</button>` +
@@ -1010,14 +1019,35 @@ function renderPromos() {
   for (let i = 0; i < 7; i++) {
     const d = (todayIdx + i) % 7, f = fechaDe(d);
     const ps = all.filter(p => ok(p) && p.dias.length < 7 && p.dias.includes(d) && vigente(p, f)).sort(orden);
+    const hs = habitualesDe(d, h => (!S.pf.super || h.super === S.pf.super) && enDonde(h) && (S.pf.quien === "todos" || aplica(h)));
     const nombre = i === 0 ? "Hoy" : i === 1 ? "Mañana" : DAYS_FULL[d][0].toUpperCase() + DAYS_FULL[d].slice(1);
-    grupos.push({ t: nombre, sub: (i < 2 ? DAYS_FULL[d] + " " : "") + f.slice(8) + "/" + f.slice(5, 7), ps });
+    grupos.push({ t: nombre, sub: (i < 2 ? DAYS_FULL[d] + " " : "") + f.slice(8) + "/" + f.slice(5, 7), ps, hs });
   }
   grupos.push({ t: "Todos los días", sub: "", ps: all.filter(p => ok(p) && p.dias.length === 7 && vigente(p, todayISO)).sort(orden) });
   const vacio = S.pf.quien === "mios" && !Object.values(S.medios).some(Boolean)
     ? "Elegí arriba los medios de pago que tenés, o tocá “Todos”." : "Sin descuentos.";
   $("promoList").innerHTML = !all.length ? "" : grupos.map(g => `<div class="pday"><h3>${g.t}${g.sub ? ` <small>${esc(g.sub)}</small>` : ""}</h3>` +
-    (g.ps.length ? g.ps.map(promoHTML).join("") : `<div class="empty">${vacio}</div>`) + `</div>`).join("");
+    (g.ps.length ? g.ps.map(promoHTML).join("") : g.hs?.length ? "" : `<div class="empty">${vacio}</div>`) +
+    (g.hs || []).map(habitualHTML).join("") + `</div>`).join("");
+}
+// Promos que suelen estar (Coto las publica semana a semana) y que todavía no se publicaron para el día d.
+// Vienen de promosData.habituales (combinarHistorial en promos.js). Se muestran hasta 2 semanas después de la última.
+function habitualesDe(d, filtro = () => true) {
+  const f = fechaDe(d), mas14 = s => { const t = new Date(s + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + 14); return t.toISOString().slice(0, 10); };
+  return (promosData?.habituales || []).filter(h => h.dias.includes(d) && f > h.hasta && f <= mas14(h.hasta) && filtro(h) &&
+    !(promosData.promos || []).some(p => p.super === h.super && p.medio === h.medio && (p.banco || null) === (h.banco || null) &&
+      p.pct && p.dias.includes(d) && vigente(p, f) && (h.local ? p.local : p.online)));
+}
+function habitualHTML(h) {
+  const fd = s => s.slice(8) + "/" + s.slice(5, 7);
+  const otros = h.pcts.filter(x => x !== h.ultimoPct);
+  return `<div class="promo habitual">
+    <div class="plogos">${logoHTML(h.medio)}${h.banco ? logoHTML(h.banco) : ""}</div>
+    <div><div class="ptit"><span class="tag ${h.super}">${storeName(h.super)}</span> <b>${esc(medioLabel(h))}</b> <span class="tag warn">sin confirmar</span></div>
+      <div class="pcond">Suele haber: la última fue el ${fd(h.desde)}${h.hasta !== h.desde ? " al " + fd(h.hasta) : ""} con <b>${h.ultimoPct}%</b>${otros.length ? ` (también se vio ${otros.join("% y ")}%)` : ""}.
+        ${storeName(h.super)} todavía no la publicó para esta semana y el % puede cambiar, así que no se aplica a los precios.</div></div>
+    <div class="ppct">~${h.ultimoPct}%<small>sin confirmar</small></div>
+  </div>`;
 }
 function promoHTML(p) {
   const fd = s => s.slice(8) + "/" + s.slice(5, 7);

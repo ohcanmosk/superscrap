@@ -65,6 +65,17 @@ td.best small{color:inherit;opacity:.8}
 details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:8px}
 .promos{font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);font-size:13px;padding:8px 0}
+.frow{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:start;margin:8px 0;font-size:13px}
+.frow>span:first-child{color:var(--muted);font-weight:600;padding-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--chip);color:var(--ink);border:0;font-weight:500;font-size:13px;padding:5px 10px;border-radius:999px;cursor:pointer}
+.chip small{color:var(--muted);margin-left:3px}
+.chip.on{background:var(--ink);color:var(--bg)} .chip.on small{color:inherit;opacity:.7}
+.chip .dot{margin-right:5px}
+.chips.long{max-height:112px;overflow:auto}
+input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%;max-width:340px}
+.fclear{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px;padding:0}
+@media (max-width:500px){.frow{grid-template-columns:1fr;gap:4px}.frow>span:first-child{padding-top:0}}
 </style>
 </head>
 <body>
@@ -83,6 +94,16 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:8px}
     <span class="seg" id="rango"></span>
   </div>
   <div class="note" id="aviso" hidden></div>
+
+  <section class="card">
+    <h2>Filtros</h2>
+    <div class="frow"><span>Súper</span><div class="chips" id="fSuper"></div></div>
+    <div class="frow"><span>Formato</span><div class="chips" id="fFormato"></div></div>
+    <div class="frow"><span>Marca</span><div class="chips long" id="fMarca"></div></div>
+    <div class="frow"><span>Producto</span><div><input type="search" id="fTexto" placeholder="ej: molido intenso -torrado" autocomplete="off">
+      <div class="sub" style="margin-top:4px">Palabras que tiene que tener el nombre; con <b>-palabra</b> se quitan.</div></div></div>
+    <div class="sub" id="fInfo"></div>
+  </section>
 
   <section class="card">
     <h2>Lo más barato de cada súper, día por día</h2>
@@ -112,7 +133,7 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:8px}
   </section>
 
   <div class="sub">Son los precios publicados en la web de cada súper, guardados 2 veces por día (7:17 y 13:17) por el robot de GitHub.
-    No incluyen el descuento de fin de semana de Coto ni Club Dia que configurás en la app, porque no son precios publicados.</div>
+    No incluyen los descuentos con medios de pago (Mercado Pago, MODO, bancos), porque no son precios publicados del producto.</div>
 </div>
 
 <script src="categorias.js"></script>
@@ -141,6 +162,37 @@ if (!CATEGORIAS[cat]) cat = "leche";
 let dias = store.get("histDias", 40);
 let prodSel = null;
 let H = null; // historial cargado
+// Filtros por categoría: súper, formato (tamaño del envase), marca y texto. Vacío = todos.
+const FILTRO_VACIO = { super: [], formato: [], marca: [], texto: "" };
+let F = structuredClone(FILTRO_VACIO);
+const cargarFiltros = () => { F = Object.assign(structuredClone(FILTRO_VACIO), store.get("histFiltros:" + cat, {})); };
+const guardarFiltros = () => store.set("histFiltros:" + cat, F);
+const { norm } = window.SuperScrapComun;
+// Marca agrupada como en la app ("LA SERENISIMA" = "SERENISIMA").
+const marcaKey = b => norm(b).replace(/[^a-z0-9 ]/g, " ").replace(/^\s*(la|el|los|las)\s+/, "").replace(/\s+/g, " ").trim() || "sin marca";
+const titleCase = t => t.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
+// Formato del envase: "250 g", "1 kg", "500 ml", "1 L", "120 m".
+function formato(size, unit) {
+  if (!size) return "sin tamaño";
+  const r = v => String(Math.round(v * 100) / 100).replace(".", ",");
+  if (unit === "kg") return size < 1 ? Math.round(size * 1000) + " g" : r(size) + " kg";
+  if (unit === "L") return size < 1 ? Math.round(size * 1000) + " ml" : r(size) + " L";
+  if (unit === "m") return Math.round(size) + " m";
+  return r(size) + " " + (unit || "");
+}
+// ¿El producto pasa los filtros? (sin = dimensión que no se mira, para contar las opciones de esa misma dimensión)
+function pasa(k, sin) {
+  const [name, brand, st, size, unit] = H.productos[k];
+  if (sin !== "super" && F.super.length && !F.super.includes(st)) return false;
+  if (sin !== "formato" && F.formato.length && !F.formato.includes(formato(size, unit))) return false;
+  if (sin !== "marca" && F.marca.length && !F.marca.includes(marcaKey(brand))) return false;
+  if (F.texto.trim()) {
+    const n = norm(name), ws = norm(F.texto).split(/\s+/).filter(Boolean);
+    if (ws.some(w => w.startsWith("-") ? w.length > 1 && n.includes(w.slice(1)) : !n.includes(w))) return false;
+  }
+  return true;
+}
+const storesVis = () => F.super.length ? STORES.filter(s => F.super.includes(s)) : STORES;
 
 // "2026-11-23" → día de la semana (0 = domingo), sin problemas de zona horaria.
 const diaSemana = d => new Date(d + "T12:00:00Z").getUTCDay();
@@ -180,6 +232,7 @@ function porDia() {
     for (const [k, v] of Object.entries(t.p)) {
       const info = H.productos[k]; if (!info) continue;
       if (excluidas.some(b => info[1].includes(b) || info[0].toUpperCase().includes(b))) continue;
+      if (!pasa(k)) continue;
       const x = precioToma(v), prev = d[k];
       d[k] = !prev ? x : { sin: Math.min(prev.sin, x.sin), con: Math.min(prev.con, x.con), txt: x.con < prev.con ? x.txt : prev.txt };
     }
@@ -213,7 +266,9 @@ function render() {
   if (!H) { ["legDiario","chDiario","tbDiario","semSin","semCon","legProd","chProd","semProd"].forEach(id => $(id).innerHTML = ""); $("prod").innerHTML = ""; return; }
 
   $("aviso").hidden = true;
+  renderFiltros();
   const pd = porDia(), dias_ = Object.keys(pd).sort();
+  const VIS = storesVis();
   if (dias_.length < 7) aviso(`El histórico empezó el ${ddmm(H.tomas[0].d)}: hay ${dias_.length} día${dias_.length === 1 ? "" : "s"} con datos. ` +
     "El robot de GitHub suma 2 tomas por día; para comparar días de la semana hace falta al menos 1 semana (mejor 3 o más).");
   const mins = minimosPorSuper(pd);
@@ -221,19 +276,19 @@ function render() {
 
   // 1) Línea por día: 3 súper × (sin promo llena, con promo punteada)
   const series = [];
-  STORES.forEach(s => ["sin", "con"].forEach(m => series.push({
+  VIS.forEach(s => ["sin", "con"].forEach(m => series.push({
     name: NAME[s] + (m === "con" ? " con promo" : ""), color: color(s), dash: m === "con", label: m === "sin" ? NAME[s] : null,
     pts: dias_.map(d => mins[s][d]?.[m] ? { x: d, y: mins[s][d][m].v, det: nombre(mins[s][d][m].k) + (m === "con" && mins[s][d][m].txt ? " · " + mins[s][d][m].txt : "") } : null),
   })));
-  $("legDiario").innerHTML = STORES.map(s => `<span><i style="border-color:${color(s)}"></i>${NAME[s]}</span>`).join("") +
+  $("legDiario").innerHTML = VIS.map(s => `<span><i style="border-color:${color(s)}"></i>${NAME[s]}</span>`).join("") +
     `<span><i style="border-color:var(--muted)"></i>sin promo</span><span><i class="dash" style="border-color:var(--muted)"></i>con promo</span>`;
   lineChart($("chDiario"), dias_, series, v => fmt(v) + "/" + unit);
-  $("tbDiario").innerHTML = `<table><tr><th>Día</th>${STORES.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
-    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${STORES.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
+  $("tbDiario").innerHTML = `<table><tr><th>Día</th>${VIS.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
+    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${VIS.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
 
   // 2) Tablas por día de la semana
   const semana = m => {
-    const rows = STORES.map(s => {
+    const rows = VIS.map(s => {
       const acc = {}; Object.entries(mins[s]).forEach(([d, x]) => { if (!x[m]) return; const w = diaSemana(d); (acc[w] ||= []).push(x[m].v); });
       const avg = Object.fromEntries(Object.entries(acc).map(([w, a]) => [w, { v: a.reduce((x, y) => x + y, 0) / a.length, n: a.length }]));
       const vals = Object.values(avg).map(x => x.v), lo = Math.min(...vals), hi = Math.max(...vals);
@@ -250,15 +305,16 @@ function render() {
 
   // 3) Un producto
   const keys = Object.keys(H.productos).filter(k => dias_.some(d => pd[d][k]));
-  const grupos = STORES.map(s => {
+  const grupos = VIS.map(s => {
     const ks = keys.filter(k => H.productos[k][2] === s).sort((a, b) => nombre(a).localeCompare(nombre(b)));
     return ks.length ? `<optgroup label="${NAME[s]}">${ks.map(k => `<option value="${esc(k)}">${esc(nombre(k))}</option>`).join("")}</optgroup>` : "";
   }).join("");
-  $("prod").innerHTML = grupos;
+  $("prod").innerHTML = grupos || `<option value="">(ningún producto con estos filtros)</option>`;
+  if (!keys.length) { prodSel = null; ["legProd", "chProd", "semProd"].forEach(id => $(id).innerHTML = `<div class="empty">Ningún producto con estos filtros.</div>`); return; }
   if (!keys.includes(prodSel)) {
     // Por defecto: el más barato con promo del último día.
     const ult = dias_[dias_.length - 1];
-    prodSel = STORES.map(s => mins[s][ult]?.con?.k).filter(Boolean)
+    prodSel = VIS.map(s => mins[s][ult]?.con?.k).filter(Boolean)
       .sort((a, b) => pd[ult][a].con / H.productos[a][3] - pd[ult][b].con / H.productos[b][3])[0] || keys[0];
   }
   $("prod").value = prodSel;
@@ -293,6 +349,41 @@ function renderProducto(pd, dias_) {
   }).join("")}</tr>`;
   $("semProd").innerHTML = `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}</tr>${fila("sin", "Sin promo")}${fila("con", "Con promo c/u")}${promos}</table>`;
 }
+
+// ---------- Filtros ----------
+// Opciones con la cantidad de productos (del período) que quedan con los demás filtros.
+function renderFiltros() {
+  const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+  const enPeriodo = new Set(H.tomas.filter(t => t.d >= desde).flatMap(t => Object.keys(t.p)));
+  const ks = Object.keys(H.productos).filter(k => enPeriodo.has(k) &&
+    !excluidas.some(b => H.productos[k][1].includes(b) || H.productos[k][0].toUpperCase().includes(b)));
+  const contar = (dim, fn) => { const c = new Map(); ks.filter(k => pasa(k, dim)).forEach(k => { const v = fn(k); c.set(v, (c.get(v) || 0) + 1); }); return c; };
+  const chips = (dim, opts, label) => `<button class="chip ${F[dim].length ? "" : "on"}" data-dim="${dim}" data-v="">Todos</button>` +
+    opts.map(([v, n]) => `<button class="chip ${F[dim].includes(v) ? "on" : ""}" data-dim="${dim}" data-v="${esc(v)}">${label(v)}<small>${n}</small></button>`).join("");
+  const cs = contar("super", k => H.productos[k][2]);
+  $("fSuper").innerHTML = chips("super", STORES.map(s => [s, cs.get(s) || 0]), s => `<span class="dot" style="background:${color(s)}"></span>${NAME[s]}`);
+  const cf = contar("formato", k => formato(H.productos[k][3], H.productos[k][4]));
+  const tam = f => { const k = ks.find(k => formato(H.productos[k][3], H.productos[k][4]) === f); return k ? H.productos[k][3] || 1e9 : 1e9; };
+  $("fFormato").innerHTML = chips("formato", [...cf].sort((a, b) => tam(a[0]) - tam(b[0])), esc);
+  const nombres = {};
+  ks.forEach(k => { const m = marcaKey(H.productos[k][1]); nombres[m] ||= titleCase((H.productos[k][1] || "sin marca").replace(/^\s*(LA|EL|LOS|LAS)\s+/i, "")); });
+  const cm = contar("marca", k => marcaKey(H.productos[k][1]));
+  $("fMarca").innerHTML = chips("marca", [...cm].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])), m => esc(nombres[m] || m));
+  if (document.activeElement !== $("fTexto")) $("fTexto").value = F.texto;
+  const n = ks.filter(k => pasa(k)).length, activos = F.super.length + F.formato.length + F.marca.length + (F.texto.trim() ? 1 : 0);
+  $("fInfo").innerHTML = activos ? `${n} de ${ks.length} productos con estos filtros · <button class="fclear" id="fClear">Sacar filtros</button>` : `${ks.length} productos`;
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".chip[data-dim]");
+  if (b) {
+    const { dim, v } = b.dataset;
+    if (!v) F[dim] = []; else F[dim] = F[dim].includes(v) ? F[dim].filter(x => x !== v) : [...F[dim], v];
+    guardarFiltros(); render(); return;
+  }
+  if (ev.target.id === "fClear") { F = structuredClone(FILTRO_VACIO); guardarFiltros(); render(); }
+});
+let tTexto;
+$("fTexto").addEventListener("input", () => { clearTimeout(tTexto); tTexto = setTimeout(() => { F.texto = $("fTexto").value; guardarFiltros(); render(); }, 250); });
 
 // ---------- Gráfico de líneas (SVG) con cruz y tooltip ----------
 function lineChart(el, xs, series, fmtY) {
@@ -355,10 +446,11 @@ function lineChart(el, xs, series, fmtY) {
 }
 
 // ---------- Eventos ----------
-$("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; cargar(); };
+$("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; cargarFiltros(); cargar(); };
 $("rango").onclick = ev => { const n = +ev.target.dataset?.dias; if (!n) return; dias = n; store.set("histDias", dias); render(); };
 $("prod").onchange = () => { prodSel = $("prod").value; render(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => H && render());
+cargarFiltros();
 cargar();
 </script>
 </body>

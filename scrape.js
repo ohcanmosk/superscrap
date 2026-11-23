@@ -12,7 +12,7 @@ const path = require("path");
 
 const { CATEGORIAS, ZONA, SIMULATION } = require("./categorias.js");
 const { tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat } = require("./comun.js");
-const { bajarPromos } = require("./promos.js");
+const { bajarPromos, combinarHistorial } = require("./promos.js");
 // Las URLs salen de categorias.js (las mismas que usa index.html). Clave = nombre del archivo.
 const SOURCES = {}; // nombre → { url, store, cat }
 for (const [cat, c] of Object.entries(CATEGORIAS)) {
@@ -178,6 +178,7 @@ function guardarHistorial(out, porCat, ahora) {
       nuevo.promos.push(...viejo.promos.filter(p => p.super === s && (!p.hasta || p.hasta >= hoy)));
       meta.errors["promos-" + s] = nuevo.errors[s];
     }
+    combinarHistorial(nuevo, viejo);
     if (nuevo.promos.length) fs.writeFileSync(f, JSON.stringify(nuevo));
     meta.ok.promos = nuevo.promos.length;
   } catch (e) {

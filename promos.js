@@ -8,12 +8,15 @@
 // - Dia: la página "medios de pago y promociones" trae las tarjetas de promos como JSON dentro del HTML.
 // - Carrefour: Master Data pública de VTEX (entidad BP = promos bancarias, FB = bancos).
 
-const { norm, clasificarMedio } = require("./comun.js");
+const { norm, clasificarMedio, MEDIOS } = require("./comun.js");
 
 const UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36" };
 const URLS = {
   coto: "https://www.coto.com.ar/rest/model/atg/actors/cProfileActor/getPromocionesMulticanal",
   cotoLegal: "https://www.coto.com.ar/terminos-descuentos",
+  // Los mismos términos legales como JSON (Endeca): ahí están las promos "de fin de semana" que Coto
+  // publica semana a semana (ej. 20% con Mercado Pago sáb y dom) y que no figuran en el servicio de arriba.
+  cotoLegales: "https://www.coto.com.ar/sitios/cdigi/terminos-descuentos?format=json",
   dia: "https://diaonline.supermercadosdia.com.ar/medios-de-pago-y-promociones",
   carrefour: "https://www.carrefour.com.ar/api/dataentities/BP/search",
   carrefourBancos: "https://www.carrefour.com.ar/api/dataentities/FB/search?_fields=id,name",
@@ -32,6 +35,9 @@ function parseTope(texto) {
   const n = norm(texto);
   const U = "(?:semana|mes|transaccion|cuenta|cliente|dia|banco|usuario|compra|tarjeta|persona)";
   const m = n.match(new RegExp(`(?:tope|limite)(?: (?:de |del )?(?:reintegro|devolucion|descuento|beneficio))*(?: es)?:?\\s*(?:de\\s*)?(?:hasta\\s*)?\\$\\s*([\\d.,]+)\\s*((?:por|x) ${U}(?:,? (?:y )?(?:por )?${U})?)?`));
+  // Si "sin tope" aparece antes que un tope con monto, manda "sin tope" (el monto suele ser de un adicional).
+  const st = n.search(/sin tope/);
+  if (st >= 0 && (!m || st < m.index)) return "Sin tope";
   if (m) {
     const v = pesos(m[1]);
     if (v >= 500000) return "Sin tope";
@@ -75,8 +81,87 @@ function parseVigencia(texto) {
 const acumulable = texto => { const n = norm(texto); return /no (es )?acumulable|no acumula/.test(n) ? false : /acumulable/.test(n) ? true : null; };
 const recortar = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n).replace(/\s\S*$/, "") + "…" : s; };
 
+// Fechas puntuales de una promo: "desde el 21 hasta el 22 de noviembre de 2026",
+// "los días sábado 28 de noviembre y domingo 29 de noviembre de 2026", "jueves 19 de noviembre de 2026".
+// Devuelve la lista de días (YYYY-MM-DD) o null. Solo mira el principio del texto (la vigencia).
+function fechasPuntuales(texto) {
+  const n = norm(texto).slice(0, 500), mes = MESES.join("|");
+  const rango = n.match(new RegExp(`(\\d{1,2})(?: de (${mes}))?(?: de(?:l)? \\d{4})?\\s+(?:y|hasta el|al|a)\\s+(?:[a-z]+ )?(\\d{1,2}) de (${mes}) de(?:l)? (\\d{4})`));
+  let a, b;
+  if (rango) {
+    const y = +rango[5], m2 = MESES.indexOf(rango[4]) + 1, m1 = rango[2] ? MESES.indexOf(rango[2]) + 1 : m2;
+    a = new Date(Date.UTC(y, m1 - 1, +rango[1])); b = new Date(Date.UTC(y, m2 - 1, +rango[3]));
+  } else {
+    const uno = n.match(new RegExp(`(\\d{1,2}) de (${mes}) de(?:l)? (\\d{4})`));
+    if (!uno) return null;
+    a = b = new Date(Date.UTC(+uno[3], MESES.indexOf(uno[2]), +uno[1]));
+  }
+  const out = [];
+  for (const d = new Date(a); d <= b && out.length < 8; d.setUTCDate(d.getUTCDate() + 1)) out.push(d.toISOString().slice(0, 10));
+  return out.length ? out : null;
+}
+// Promos de una sola ciudad/provincia (no aplican en zona oeste del GBA).
+const REGIONAL = /mar del plata|neuquen|mendoza|santa fe|entre rios|cordoba|rosario|la plata|bahia blanca|tucuman|salta/;
+// Saca del texto legal las menciones en negativo ("no será aplicado en compras realizadas a través de Mercadopago").
+const sinNegaciones = t => t.replace(/no (?:ser[aá]|es|son) (?:aplicad|v[aá]lid)[^.]*\./gi, " ").replace(/(?:abonadas|realizadas) mediante billeteras virtuales/gi, " ");
+// Medio de una tarjeta legal: manda el título ("BANCO ICBC...", "BENEFICIO ANSES..."); el texto solo suma MODO
+// ("Credicoop ... a través de QR MODO") o decide si el título no dice nada ("DESCUENTOS SÁBADO Y DOMINGO").
+function medioLegal(titulo, cuerpo) {
+  const c = sinNegaciones(cuerpo).slice(0, 1200), tit = clasificarMedio(titulo);
+  if (!tit.medio) return clasificarMedio(c);
+  if (tit.medio !== "modo" && /\bmodo\b/.test(norm(c)) && MEDIOS[tit.medio].tipo === "banco")
+    return { medio: "modo", banco: tit.medio };
+  return tit;
+}
+// Términos legales de Coto: tarjetas con título ("DESCUENTOS SÁBADO Y DOMINGO", "BANCO ICBC FIN DE SEMANA...")
+// y texto. Se toman solo las promos de pocos días (hasta 4) con % de descuento y un medio de pago reconocible.
+async function promosCotoLegales() {
+  const r = await fetch(URLS.cotoLegales, { headers: UA });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  const html = (j.Main || []).map(x => x.content || "").join("");
+  const ent = s => s.replace(/&nbsp;/g, " ").replace(/&([a-z])(acute|tilde|uml);/gi, "$1").replace(/&ntilde;/gi, "ñ")
+    .replace(/&[a-z]+;|&#\d+;/gi, " ");
+  const out = [];
+  for (const card of html.split(/class="legal-card"/).slice(1)) {
+    const titulo = ent((card.match(/legal-header"[^>]*>([\s\S]*?)<\/div>/) || [])[1] || "").replace(/\s+/g, " ").trim();
+    const cuerpo = ent(((card.match(/legal-body"[^>]*>([\s\S]*)/) || [])[1] || "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    const fechas = fechasPuntuales(cuerpo);
+    if (!titulo || !fechas || fechas.length > 4) continue;
+    // Si la tarjeta junta varios beneficios "(1) ... (2) ...", se usa el primero (el de descuento).
+    const primero = cuerpo.split(/\s\(2\)\s/)[0];
+    const t = norm(titulo);
+    if (REGIONAL.test(t)) continue;
+    const pct = parsePct(primero), { medio, banco } = medioLegal(titulo, primero);
+    if (!pct || !medio || /cuotas/i.test(titulo)) continue;
+    const online = /online/.test(t), local = /presencial/.test(t) || !online;
+    const dias = [...new Set(fechas.map(f => new Date(f + "T12:00:00Z").getUTCDay()))];
+    const fd = f => f.slice(8) + "/" + f.slice(5, 7);
+    out.push({
+      id: "coto:legal:" + t.replace(/[^a-z0-9]+/g, "-") + ":" + fechas[0], super: "coto", medio, banco, puntual: true,
+      pct, cuotas: null, dias, local, online, tiendas: local ? "Sucursales Coto" : "Coto Digital (online)",
+      tope: parseTope(primero), minimo: parseMinimo(primero),
+      desde: fechas[0], hasta: fechas[fechas.length - 1],
+      cuando: fechas.length === 1 ? fd(fechas[0]) : `${fd(fechas[0])} al ${fd(fechas[fechas.length - 1])}`,
+      soloSinOferta: /sin oferta/i.test(primero), acumulable: acumulable(primero),
+      resumen: titulo.charAt(0) + titulo.slice(1).toLowerCase(), legal: recortar(cuerpo, 1500), url: URLS.cotoLegal,
+    });
+  }
+  return out;
+}
+
 // ---------- Coto ----------
+// Servicio de promos de coto.com.ar/descuentos + promos puntuales de los términos legales.
 async function promosCoto() {
+  const [base, legales] = await Promise.all([promosCotoBase(), promosCotoLegales().catch(e => {
+    console.error(`promos coto (términos legales): ERROR ${e.message}`); return [];
+  })]);
+  // Las puntuales que ya están en el servicio (mismo medio, %, día y lugar) no se repiten.
+  const nuevas = legales.filter(l => !base.some(b => b.medio === l.medio && b.banco === l.banco && b.pct === l.pct &&
+    b.local === l.local && l.dias.every(d => b.dias.includes(d))));
+  return base.concat(nuevas);
+}
+async function promosCotoBase() {
   const r = await fetch(URLS.coto, { headers: UA });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const j = await r.json();
@@ -190,12 +275,16 @@ async function promosCarrefour() {
 // Devuelve { updated, promos: [...], errors: { súper: mensaje } }. Saca vencidas, futuras lejanas,
 // sin descuento ni cuotas, y repetidas (Coto y Dia a veces publican la misma promo dos veces).
 async function bajarPromos() {
-  const out = { updated: new Date().toISOString(), promos: [], errors: {} };
+  const out = { updated: new Date().toISOString(), promos: [], vistas: [], errors: {} };
   const hoy = hoyAR(), en40 = hoyAR(new Date(Date.now() + 40 * 864e5));
   for (const [s, f] of [["coto", promosCoto], ["dia", promosDia], ["carrefour", promosCarrefour]]) {
     try {
       const vistos = new Set();
-      const ps = (await f()).filter(p => {
+      const todas = await f();
+      // Promos puntuales (de 1 a 4 días) vistas, aunque ya hayan vencido: sirven para avisar las habituales.
+      out.vistas.push(...todas.filter(p => p.puntual && p.pct).map(p => ({ id: p.id, super: p.super, medio: p.medio, banco: p.banco,
+        pct: p.pct, dias: p.dias, local: p.local, online: p.online, desde: p.desde, hasta: p.hasta, resumen: p.resumen })));
+      const ps = todas.filter(p => {
         if (!p.medio || (!p.pct && !p.cuotas) || !p.dias.length) return false;
         if (p.hasta && p.hasta < hoy) return false;
         if (p.desde && p.desde > en40) return false;
@@ -213,12 +302,45 @@ async function bajarPromos() {
   return out;
 }
 
-module.exports = { bajarPromos, parseTope, parseMinimo, parsePct, parseVigencia };
+// ---------- Promos habituales (todavía sin confirmar) ----------
+// Coto publica algunas promos semana a semana (ej. "DESCUENTOS SÁBADO Y DOMINGO": 20% con Mercado Pago, a veces 15%)
+// recién durante la semana. Con las puntuales vistas en los últimos días (vistas, se guardan en data/promos.json
+// entre corridas) se arma "habituales": las que hubo hace poco (terminaron hace 7 días o menos) y que se suelen repetir.
+// La app las muestra "sin confirmar" (no las aplica a los precios) para las fechas en que todavía no se publicaron.
+const HIST_PROMOS_DIAS = 70;
+function combinarHistorial(nuevo, viejo) {
+  const hoy = hoyAR(), limite = hoyAR(new Date(Date.now() - HIST_PROMOS_DIAS * 864e5));
+  const reciente = hoyAR(new Date(Date.now() - 7 * 864e5));
+  const porId = new Map();
+  for (const v of [...(viejo?.vistas || []), ...(nuevo.vistas || [])]) if (v.hasta >= limite) porId.set(v.id, v);
+  nuevo.vistas = [...porId.values()].sort((a, b) => a.desde.localeCompare(b.desde));
+  const grupos = new Map();
+  for (const v of nuevo.vistas) {
+    const k = [v.super, v.medio, v.banco, [...v.dias].sort().join(""), v.local].join("|");
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(v);
+  }
+  nuevo.habituales = [];
+  for (const vs of grupos.values()) {
+    const u = vs[vs.length - 1];
+    if (u.hasta < reciente || u.hasta >= hoy) continue; // vieja, o la de esta semana ya está publicada
+    if (/\d\s*(?:°|º|er|do)?\s*fin de semana/.test(norm(u.resumen))) continue; // "2° fin de semana": es mensual
+    nuevo.habituales.push({ super: u.super, medio: u.medio, banco: u.banco, dias: u.dias, local: u.local, online: u.online,
+      ultimoPct: u.pct, pcts: [...new Set(vs.map(v => v.pct))].sort((a, b) => a - b), desde: u.desde, hasta: u.hasta,
+      veces: vs.length, resumen: u.resumen });
+  }
+  return nuevo;
+}
+
+module.exports = { combinarHistorial, bajarPromos, parseTope, parseMinimo, parsePct, parseVigencia, fechasPuntuales, promosCotoLegales };
 
 if (require.main === module) {
   const fs = require("fs"), path = require("path");
   bajarPromos().then(o => {
     if (!o.promos.length) process.exit(1);
+    const f = path.join(__dirname, "data", "promos.json");
+    let viejo = null; try { viejo = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
+    combinarHistorial(o, viejo);
     fs.writeFileSync(path.join(__dirname, "data", "promos.json"), JSON.stringify(o));
   });
 }

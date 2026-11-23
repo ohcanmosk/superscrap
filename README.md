@@ -46,7 +46,7 @@ Los registros de góndola y la configuración se guardan por dispositivo (los de
 
 ## Histórico
 
-Botón **📈 Histórico** (arriba a la derecha): página aparte con los últimos 7, 14 o 40 días.
+Botón **📈 Histórico** (arriba a la derecha): página aparte con los últimos 7, 14 o 40 días. Se puede filtrar por súper, formato (ej. café de 250 g o de 500 g), marca y palabras del nombre.
 - Lo más barato de cada súper día por día, sin promo y con promo.
 - **¿Qué día de la semana conviene?**: promedio por día de la semana de cada súper, sin promo y con promo, con el día más barato marcado.
 - **Un producto**: su precio día por día y qué promo tuvo cada día de la semana.
@@ -65,7 +65,7 @@ Las categorías fijas se configuran en `categorias.js`.
 
 ## Reglas
 
-- **Descuentos con medios de pago:** en la pestaña 💳 Descuentos elegís qué billeteras y bancos tenés (Mercado Pago, MODO, Cuenta DNI, Naranja X…). Los precios de cada día incluyen el mejor descuento que publica cada súper para esos medios (ej. Coto −25% los viernes con Mercado Pago). La pestaña muestra todos los descuentos de la semana con su tope, compra mínima y condiciones; se actualizan solos dos veces por día.
+- **Descuentos con medios de pago:** en la pestaña 💳 Descuentos elegís qué billeteras y bancos tenés (Mercado Pago, MODO, Cuenta DNI, Naranja X…). Los precios de cada día incluyen el mejor descuento que publica cada súper para esos medios (ej. Coto −25% los viernes con Mercado Pago). La pestaña muestra todos los descuentos de la semana con su tope, compra mínima y condiciones; se actualizan solos dos veces por día. Las promos que Coto publica semana a semana (ej. 20% con Mercado Pago el finde) aparecen como "sin confirmar" hasta que las publica, y no se aplican a los precios. El descuento del medio de pago no se suma a las promos del producto (2da al 50%, 2x1…), salvo que la promo diga que es acumulable.
 - Marcas excluidas: TREGAR por defecto (editable).
 - Leches: se excluyen chocolatadas, en polvo, condensadas, infantiles y vegetales. Las "especiales" (0% lactosa, proteína, etc.) se pueden activar.
 
