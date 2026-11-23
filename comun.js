@@ -160,6 +160,8 @@
     empleados:    { label: "Empleados públicos", tipo: "beneficio", rx: /emplead[oa](\/a)? public/ },
     clublanacion: { label: "Club La Nación", tipo: "beneficio", rx: /club ?(la ?)?nacion/ },
     comunidad:    { label: "Comunidad Coto", tipo: "beneficio", rx: /comunidad/ },
+    // Cupón Club Dia de los martes (socios).
+    clubdia:      { label: "Club Dia", tipo: "beneficio", rx: /club ?dia/ },
     // Varias marcas juntas ("Visa, Mastercard, Amex y Cabal") = cualquier tarjeta de crédito.
     tarjetas:     { label: "Tarjetas de crédito", tipo: "tarjeta", rx: /(visa|mastercard|american express|amex|cabal)\b.*(?!\1)(visa|mastercard|american express|amex|cabal)\b/ },
     amex:         { label: "American Express", tipo: "tarjeta", logo: "amex", rx: /american express|\bamex/ },

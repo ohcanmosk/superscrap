@@ -18,6 +18,8 @@ const URLS = {
   // publica semana a semana (ej. 20% con Mercado Pago sáb y dom) y que no figuran en el servicio de arriba.
   cotoLegales: "https://www.coto.com.ar/sitios/cdigi/terminos-descuentos?format=json",
   dia: "https://diaonline.supermercadosdia.com.ar/medios-de-pago-y-promociones",
+  // Legales de Dia: ahí están los cupones Club Dia ("Cupón 24/11/2026" = el de los martes, "Cupón ClubDia +60").
+  diaLegales: "https://diaonline.supermercadosdia.com.ar/legales",
   carrefour: "https://www.carrefour.com.ar/api/dataentities/BP/search",
   carrefourBancos: "https://www.carrefour.com.ar/api/dataentities/FB/search?_fields=id,name",
   carrefourLegal: "https://www.carrefour.com.ar/descuentos-bancarios",
@@ -34,7 +36,7 @@ const iso = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStar
 function parseTope(texto) {
   const n = norm(texto);
   const U = "(?:semana|mes|transaccion|cuenta|cliente|dia|banco|usuario|compra|tarjeta|persona)";
-  const m = n.match(new RegExp(`(?:tope|limite)(?: (?:de |del )?(?:reintegro|devolucion|descuento|beneficio))*(?: es)?:?\\s*(?:de\\s*)?(?:hasta\\s*)?\\$\\s*([\\d.,]+)\\s*((?:por|x) ${U}(?:,? (?:y )?(?:por )?${U})?)?`));
+  const m = n.match(new RegExp(`(?:tope|limite)(?: maximo)?(?: (?:de |del )?(?:reintegro|devolucion|descuento|beneficio))*(?: es)?:?\\s*(?:de\\s*)?(?:hasta\\s*)?\\$\\s*([\\d.,]+)\\s*((?:por|x) ${U}(?:,? (?:y )?(?:por )?${U})?)?`));
   // Si "sin tope" aparece antes que un tope con monto, manda "sin tope" (el monto suele ser de un adicional).
   const st = n.search(/sin tope/);
   if (st >= 0 && (!m || st < m.index)) return "Sin tope";
@@ -192,6 +194,12 @@ async function promosCotoBase() {
 // En el HTML hay más de un bloque de "cards" (uno viejo que queda en la página); se usa el último,
 // que es el de la página de promos, y además se descartan las que tienen fechas vencidas.
 async function promosDia() {
+  const [promos, club] = await Promise.all([promosDiaPagos(), promosDiaClub().catch(e => {
+    console.error(`promos dia (Club Dia): ERROR ${e.message}`); return [];
+  })]);
+  return promos.concat(club);
+}
+async function promosDiaPagos() {
   const r = await fetch(URLS.dia, { headers: UA });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const html = await r.text();
@@ -220,6 +228,58 @@ async function promosDia() {
     };
   });
 }
+// Cupón Club Dia de los martes (página de legales, "Cupón 24/11/2026"): toda la compra, cualquier medio de pago,
+// sin mínimo ni tope, con exclusiones ("NO INCLUYE LECHES INFANTILES ETAPA 1 Y 2, GOLOSINAS, VINOS, CARNES...").
+// El legal NO dice el %: se usa 20% porque es lo que comunica Dia ("cupón ClubDia 20% de cada martes, sin tope
+// ni monto mínimo, sobre toda la compra, acumulable con todas las ofertas"; en TikTok: "hasta un 20%").
+// No se toman el +60 (sin % publicado vigente), ni cumpleaños ni bienvenida (una sola vez por socio).
+const CLUBDIA_PCT = 20, CLUBDIA_PCT_FUENTE = "El legal no dice el %: 20% es lo que comunica Dia (“cupón ClubDia 20% de cada martes”; en sus redes, “hasta 20%”).";
+// Exclusiones del cupón → claves que la app reconoce por la categoría del producto en Dia.
+const EXCLUSIONES = [["leches-infantiles", /leches? infantil/], ["golosinas", /golosina/], ["vinos", /\bvinos?\b/],
+  ["carnes", /\bcarnes?\b/], ["mostrador", /mostrador|venta asistida/]];
+const DIAS_TXT = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+function diasDeTexto(n) {
+  const d = DIAS_TXT.join("|");
+  const r = n.match(new RegExp(`de (${d}) a (${d})`));
+  if (r) { const out = []; for (let i = DIAS_TXT.indexOf(r[1]); ; i = (i + 1) % 7) { out.push(i); if (i === DIAS_TXT.indexOf(r[2]) || out.length > 7) break; } return out; }
+  const u = n.match(new RegExp(`\\b(?:el|los) (${d})`));
+  return u ? [DIAS_TXT.indexOf(u[1])] : null;
+}
+async function promosDiaClub() {
+  const r = await fetch(URLS.diaLegales, { headers: UA });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const html = await r.text();
+  const txt = s => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  const out = [];
+  for (const [, q, a] of html.matchAll(/paragraph--main-question-frecuentes">(.*?)<\/p>.*?paragraph--answer1">(.*?)<\/p>/gs)) {
+    const titulo = txt(q), cuerpo = txt(a), t = norm(titulo);
+    if (!/cupon/.test(t) || !/club ?dia/.test(norm(cuerpo)) || /cumple|bienvenida|\+ ?60/.test(t)) continue;
+    const primera = cuerpo.split(/\.\s*\/|\.\/\s*/)[0], n = norm(primera);
+    const fecha = titulo.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    let desde, hasta, dias;
+    if (fecha) {
+      desde = hasta = iso(+fecha[1], +fecha[2], +fecha[3]);
+      dias = [new Date(desde + "T12:00:00Z").getUTCDay()];
+    } else {
+      const v = parseVigencia(primera); if (!v) continue;
+      ({ desde, hasta } = v); dias = diasDeTexto(n) || [0, 1, 2, 3, 4, 5, 6];
+    }
+    const noIncluye = (norm(cuerpo).match(/no incluye ([^(]*)/) || [])[1] || "";
+    const pctLegal = parsePct(primera);
+    out.push({
+      id: "dia:club:clubdia:" + desde, super: "dia", medio: "clubdia", banco: null, cupon: true, puntual: !!fecha,
+      pct: pctLegal || CLUBDIA_PCT, pctFuente: pctLegal ? null : CLUBDIA_PCT_FUENTE,
+      cuotas: null, dias, local: true, online: true, tiendas: "Tiendas Dia, app y diaonline",
+      tope: parseTope(primera), minimo: parseMinimo(primera), desde, hasta, cuando: titulo,
+      soloSinOferta: false, acumulable: true,
+      excluye: EXCLUSIONES.filter(([, rx]) => rx.test(noIncluye)).map(([k]) => k),
+      resumen: titulo + " (cupón semanal de socios Club Dia)",
+      legal: recortar(cuerpo, 1500), url: URLS.diaLegales,
+    });
+  }
+  return out;
+}
+
 // Lee el array JSON que empieza en html[pos] (el HTML lo trae con /, <... que JSON entiende).
 function parseJSONAt(s, pos) {
   let depth = 0, inStr = false;
@@ -282,10 +342,10 @@ async function bajarPromos() {
       const vistos = new Set();
       const todas = await f();
       // Promos puntuales (de 1 a 4 días) vistas, aunque ya hayan vencido: sirven para avisar las habituales.
-      out.vistas.push(...todas.filter(p => p.puntual && p.pct).map(p => ({ id: p.id, super: p.super, medio: p.medio, banco: p.banco,
-        pct: p.pct, dias: p.dias, local: p.local, online: p.online, desde: p.desde, hasta: p.hasta, resumen: p.resumen })));
+      out.vistas.push(...todas.filter(p => p.puntual && (p.pct || p.cupon)).map(p => ({ id: p.id, super: p.super, medio: p.medio, banco: p.banco,
+        cupon: p.cupon || undefined, acumulable: p.acumulable, pct: p.pct, dias: p.dias, local: p.local, online: p.online, desde: p.desde, hasta: p.hasta, resumen: p.resumen })));
       const ps = todas.filter(p => {
-        if (!p.medio || (!p.pct && !p.cuotas) || !p.dias.length) return false;
+        if (!p.medio || (!p.pct && !p.cuotas && !p.cupon) || !p.dias.length) return false;
         if (p.hasta && p.hasta < hoy) return false;
         if (p.desde && p.desde > en40) return false;
         const k = [p.medio, p.banco, p.pct, p.cuotas, p.dias.join(""), p.local, p.online, p.tope, norm(p.resumen).slice(0, 60)].join("|");
@@ -326,7 +386,7 @@ function combinarHistorial(nuevo, viejo) {
     if (u.hasta < reciente || u.hasta >= hoy) continue; // vieja, o la de esta semana ya está publicada
     if (/\d\s*(?:°|º|er|do)?\s*fin de semana/.test(norm(u.resumen))) continue; // "2° fin de semana": es mensual
     nuevo.habituales.push({ super: u.super, medio: u.medio, banco: u.banco, dias: u.dias, local: u.local, online: u.online,
-      ultimoPct: u.pct, pcts: [...new Set(vs.map(v => v.pct))].sort((a, b) => a - b), desde: u.desde, hasta: u.hasta,
+      cupon: u.cupon, ultimoPct: u.pct, pcts: [...new Set(vs.map(v => v.pct).filter(Boolean))].sort((a, b) => a - b), desde: u.desde, hasta: u.hasta,
       veces: vs.length, resumen: u.resumen });
   }
   return nuevo;

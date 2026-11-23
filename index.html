@@ -344,6 +344,8 @@ const store = {
 };
 let S = Object.assign(structuredClone(DEFAULT_SETTINGS), store.get("settings", {}));
 // Versiones anteriores tenían descuentos cargados a mano (finde de Coto, Club Dia): ahora salen de data/promos.json.
+// Si tenía Club Dia activado, queda marcado como medio (el cupón de los martes).
+if (S.club?.on && !("clubdia" in S.medios)) S.medios.clubdia = true;
 delete S.cotoWeekend; delete S.club;
 S.pf = Object.assign(structuredClone(DEFAULT_SETTINGS.pf), S.pf);
 // Caché por categoría (la de leches mantiene las claves viejas "products"/"fetchedAt").
@@ -643,11 +645,29 @@ function fechaDe(d) {
 }
 const vigente = (p, f) => (!p.desde || p.desde <= f) && (!p.hasta || p.hasta >= f);
 const enDonde = (p, donde = S.donde) => donde === "online" ? p.online : p.local;
-// Promos con % de descuento que el usuario puede usar en ese súper ese día, de mayor a menor.
+const pctDe = p => p.pct || null;
+// Exclusiones de un cupón (Club Dia: leches infantiles, golosinas, vinos, carnes, mostrador), por la categoría del
+// producto en Dia ("/Carnicería/...", "/Almacén/Golosinas y Alfajores/...") y, si no hay, por el nombre.
+const EXCLUYE_RX = {
+  "leches-infantiles": /leches y formulas infantiles|infantil|etapa ?[12]\b/,
+  golosinas: /golosina|alfajor|caramelo|chicle|chupetin|gomita/,
+  vinos: /\bvinos?\b/,
+  carnes: /carniceria|carne vacuna|\b(carne|cerdo|pollo|vacuno|achura)s?\b/,
+  mostrador: /fiambreria|mostrador|al corte/,
+};
+const excluido = (p, cup) => (cup.excluye || []).some(k => EXCLUYE_RX[k] &&
+  EXCLUYE_RX[k].test(norm((p.cat || "") + " " + p.name)) && !(k === "carnes" && /soja|vegetal|veggie/.test(norm(p.name))));
+// Promos con % de descuento (medios de pago) que el usuario puede usar en ese súper ese día, de mayor a menor.
 function pagosDe(st, d) {
   const f = fechaDe(d);
-  return (promosData?.promos || []).filter(p => p.super === st && p.pct && p.dias.includes(d) && vigente(p, f) && enDonde(p) && aplica(p))
+  return (promosData?.promos || []).filter(p => p.super === st && p.pct && !p.cupon && p.dias.includes(d) && vigente(p, f) && enDonde(p) && aplica(p))
     .sort((a, b) => b.pct - a.pct);
+}
+// Cupones (Club Dia): se suman al descuento del medio de pago ("aplicable con cualquier medio de pago").
+function cuponesDe(st, d) {
+  const f = fechaDe(d);
+  return (promosData?.promos || []).filter(p => p.super === st && p.cupon && pctDe(p) && p.dias.includes(d) && vigente(p, f) && enDonde(p) && aplica(p))
+    .sort((a, b) => pctDe(b) - pctDe(a));
 }
 // El mejor descuento para un producto: las promos "solo productos sin oferta" (Coto) no aplican si tiene promo u oferta.
 const pagoPara = (p, d) => pagosDe(p.store, d).find(x => !(x.soloSinOferta && (p.promos.length || p.list > p.shelf))) || null;
@@ -672,12 +692,16 @@ function priceFor(p, d) {
   const suma = !!pago && pago.acumulable === true;
   const conPago = c => pago && (!c.promo || suma) ? { ...c, v: c.v * k, notes: [...c.notes, pagoTxt] } : c;
   const menor = cs => cs.reduce((m, c) => c.v < m.v - 0.005 ? c : m);
+  // Cupón Club Dia: encima del medio de pago; con las promos del producto solo si es acumulable (el de los martes sí).
+  const cup = cuponesDe(p.store, d).find(c => !excluido(p, c));
+  const kc = cup ? 1 - pctDe(cup) / 100 : 1, cupTxt = cup ? `−${pctDe(cup)}% cupón ${medioLabel(cup)}` : "";
+  const conCupon = c => cup && (!c.promo || cup.acumulable) ? { ...c, v: c.v * kc, notes: [...c.notes, cupTxt] } : c;
   // 1 unidad: precio de góndola, o (Coto) descuentos de 1 unidad que vienen en dtoDescuentos.
   const uno = [{ v: p.shelf, notes: [], qty: 1 }];
   if (p.store === "coto") p.promos.filter(x => x.qty <= 1).forEach(x => uno.push({ v: x.unit, notes: [x.text], promo: true, qty: 1 }));
-  const uno2 = uno.flatMap(c => [c, conPago(c)]);
+  const uno2 = uno.flatMap(c => [c, conPago(c)]).map(conCupon);
   const o = menor(uno2);
-  const varios = p.promos.map(x => ({ v: x.unit, notes: [x.text], promo: true, qty: x.qty })).flatMap(c => [c, conPago(c)]);
+  const varios = p.promos.map(x => ({ v: x.unit, notes: [x.text], promo: true, qty: x.qty })).flatMap(c => [c, conPago(c)]).map(conCupon);
   const bst = menor(uno2.concat(varios));
   const oferta = p.list > p.shelf ? ["oferta, antes " + fmt(p.list)] : [];
   const oneNote = [...oferta, ...o.notes].join(" · ");
@@ -807,9 +831,10 @@ function renderDays() {
     `<button class="day ${d === selDay ? "on" : ""} ${d === todayIdx ? "today" : ""}" data-d="${d}">${DAYS[d]}${d === todayIdx ? " (hoy)" : ""}</button>`).join("");
   // El mejor descuento con mis medios de pago en cada súper ese día.
   $("daynote").innerHTML = STORES.map(st => {
-    const x = pagosDe(st, selDay)[0];
+    const x = pagosDe(st, selDay)[0], cup = cuponesDe(st, selDay)[0];
+    if (cup) return `<span class="tag ${st}">${storeName(st)}: −${pctDe(cup)}% cupón ${esc(medioLabel(cup))}${x ? ` + −${x.pct}% ${esc(medioLabel(x))}` : ""}</span>`;
     const h = !x && habitualesDe(selDay, h => h.super === st && enDonde(h) && aplica(h))[0];
-    if (h) return `<span class="tag warn" title="Suele haber, pero todavía no está publicada: no se aplica a los precios">${storeName(st)}: posible −${h.ultimoPct}% ${esc(medioLabel(h))} (sin confirmar)</span>`;
+    if (h) return `<span class="tag warn" title="Suele haber, pero todavía no está publicada: no se aplica a los precios">${storeName(st)}: posible ${pctDe({ ...h, pct: h.ultimoPct }) ? "−" + pctDe({ ...h, pct: h.ultimoPct }) + "% " : ""}${h.cupon ? "cupón " : ""}${esc(medioLabel(h))} (sin confirmar)</span>`;
     return `<span class="tag ${x ? st : ""}">${storeName(st)}: ${x ? `−${x.pct}% ${esc(medioLabel(x))}` +
       (x.minimo ? ` (mín. ${fmt(x.minimo)})` : "") + (x.soloSinOferta ? " en productos sin oferta" : "") : "sin descuento con tus medios"}</span>`;
   }).join("") + `<button class="tag tagbtn" data-cat="${PROMOS}">💳 ver todos los descuentos</button>` +
@@ -1012,8 +1037,8 @@ function renderPromos() {
   const when = promosData ? new Date(promosData.updated).toLocaleString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : null;
   $("promoInfo").innerHTML = when ? `Lo que publican Coto, Dia y Carrefour en sus webs (actualizado el ${when}). Los reintegros pueden tener exclusiones: mirá el detalle.`
     : "Todavía no hay datos de descuentos (se bajan solos; probá “Actualizar descuentos”).";
-  const ok = p => (S.pf.cuotas || p.pct) && (!S.pf.super || p.super === S.pf.super) && enDonde(p) && (S.pf.quien === "todos" || aplica(p));
-  const orden = (a, b) => aplica(b) - aplica(a) || (b.pct || 0) - (a.pct || 0) || (b.cuotas || 0) - (a.cuotas || 0) || STORES.indexOf(a.super) - STORES.indexOf(b.super);
+  const ok = p => (S.pf.cuotas || p.pct || p.cupon) && (!S.pf.super || p.super === S.pf.super) && enDonde(p) && (S.pf.quien === "todos" || aplica(p));
+  const orden = (a, b) => aplica(b) - aplica(a) || (pctDe(b) || 0) - (pctDe(a) || 0) || (b.cuotas || 0) - (a.cuotas || 0) || STORES.indexOf(a.super) - STORES.indexOf(b.super);
   // Un grupo por día empezando por hoy; las que valen todos los días van aparte al final.
   const grupos = [];
   for (let i = 0; i < 7; i++) {
@@ -1036,17 +1061,18 @@ function habitualesDe(d, filtro = () => true) {
   const f = fechaDe(d), mas14 = s => { const t = new Date(s + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + 14); return t.toISOString().slice(0, 10); };
   return (promosData?.habituales || []).filter(h => h.dias.includes(d) && f > h.hasta && f <= mas14(h.hasta) && filtro(h) &&
     !(promosData.promos || []).some(p => p.super === h.super && p.medio === h.medio && (p.banco || null) === (h.banco || null) &&
-      p.pct && p.dias.includes(d) && vigente(p, f) && (h.local ? p.local : p.online)));
+      (p.pct || p.cupon) && p.dias.includes(d) && vigente(p, f) && (h.local ? p.local : p.online)));
 }
 function habitualHTML(h) {
   const fd = s => s.slice(8) + "/" + s.slice(5, 7);
   const otros = h.pcts.filter(x => x !== h.ultimoPct);
+  const pct = pctDe({ ...h, pct: h.ultimoPct });
   return `<div class="promo habitual">
     <div class="plogos">${logoHTML(h.medio)}${h.banco ? logoHTML(h.banco) : ""}</div>
     <div><div class="ptit"><span class="tag ${h.super}">${storeName(h.super)}</span> <b>${esc(medioLabel(h))}</b> <span class="tag warn">sin confirmar</span></div>
-      <div class="pcond">Suele haber: la última fue el ${fd(h.desde)}${h.hasta !== h.desde ? " al " + fd(h.hasta) : ""} con <b>${h.ultimoPct}%</b>${otros.length ? ` (también se vio ${otros.join("% y ")}%)` : ""}.
+      <div class="pcond">Suele haber: la última fue el ${fd(h.desde)}${h.hasta !== h.desde ? " al " + fd(h.hasta) : ""} ${h.ultimoPct ? ` con <b>${h.ultimoPct}%</b>` : ""}${otros.length ? ` (también se vio ${otros.join("% y ")}%)` : ""}.
         ${storeName(h.super)} todavía no la publicó para esta semana y el % puede cambiar, así que no se aplica a los precios.</div></div>
-    <div class="ppct">~${h.ultimoPct}%<small>sin confirmar</small></div>
+    <div class="ppct">${pct ? "~" + pct + "%" : "?"}<small>sin confirmar</small></div>
   </div>`;
 }
 function promoHTML(p) {
@@ -1057,16 +1083,18 @@ function promoHTML(p) {
     p.minimo ? `compra mín. ${fmt(p.minimo)}` : "",
     p.soloSinOferta ? "<b>solo productos sin oferta</b>" : "",
     p.acumulable ? "acumulable" : "",
+    p.excluye?.length ? "no incluye " + esc(p.excluye.map(k => ({ "leches-infantiles": "leches infantiles", mostrador: "productos de mostrador" })[k] || k).join(", ")) : "",
     p.hasta ? `hasta el ${fd(p.hasta)}` : "",
   ].filter(Boolean).join(" · ");
   return `<div class="promo ${aplica(p) ? "mine" : ""}">
     <div class="plogos">${logoHTML(p.medio)}${p.banco ? logoHTML(p.banco) : ""}</div>
     <div><div class="ptit"><span class="tag ${p.super}">${storeName(p.super)}</span> <b>${esc(medioLabel(p))}</b>${aplica(p) && p.medio !== "todos" ? ` <span class="tag good">✓ lo tenés</span>` : ""}</div>
       <div class="pcond">${cond}</div>
+      ${p.pctFuente ? `<div class="pcond">ⓘ ${esc(p.pctFuente)}</div>` : ""}
       <details><summary>Detalle</summary><div class="legal">${esc(p.resumen)}${p.cuando ? "\n" + esc(p.cuando) : ""}${p.tiendas ? "\nVale en: " + esc(p.tiendas) : ""}${p.desde ? `\nVigencia: ${fd(p.desde)}${p.hasta ? " al " + fd(p.hasta) : ""}` : ""}
 ${p.legal ? "\n" + esc(p.legal) : ""}
 <a href="${esc(p.url)}" target="_blank" rel="noopener">Ver en la web de ${storeName(p.super)}</a></div></details></div>
-    <div class="ppct">${p.pct ? `${p.pct}%<small>de descuento</small>` : `${p.cuotas}<small>cuotas sin interés</small>`}</div>
+    <div class="ppct">${p.cupon ? `${p.pct}%<small>cupón</small>` : p.pct ? `${p.pct}%<small>de descuento</small>` : `${p.cuotas}<small>cuotas sin interés</small>`}</div>
   </div>`;
 }
 $("mediosPick").onclick = ev => {
