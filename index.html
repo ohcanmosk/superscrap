@@ -104,8 +104,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .del{background:none;color:var(--muted);padding:2px 6px;font-weight:400}
 .pos{color:var(--dia)} .neg{color:var(--good)}
 .empty{color:var(--muted);font-size:13px;padding:8px 0}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:16px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 .tab{background:var(--chip);color:var(--ink);font-weight:500;white-space:nowrap;border-radius:999px;padding:8px 14px}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
 .searchbar{display:flex;gap:8px}
@@ -698,7 +697,7 @@ function renderExcl(shown) {
     ? `${hidden} producto${hidden === 1 ? "" : "s"} quitado${hidden === 1 ? "" : "s"} del análisis por: ${qExcl.join(", ")} · quedan ${shown}.` : "";
 }
 function renderTabs() {
-  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + c.label]), [SEARCH, "🔎 Buscar"]];
+  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + (c.tab || c.label)]), [SEARCH, "🔎 Buscar"]];
   $("tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${esc(l)}</button>`).join("");
   const c = conf();
   const title = cat === SEARCH ? (query ? `“${query}”` + (qExcl.length ? " sin " + qExcl.join(", ") : "") : "Buscar") : c.label;

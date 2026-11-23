@@ -34,8 +34,7 @@ header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:s
 a.back{background:var(--chip);color:var(--ink);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:500}
 button,select{font:inherit;color:inherit}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px;min-width:0}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .tab,.seg button{background:var(--chip);color:var(--ink);border:0;font-weight:500;white-space:nowrap;border-radius:999px;padding:7px 13px;cursor:pointer}
 .tab.on,.seg button.on{background:var(--ink);color:var(--bg);font-weight:700}
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;font-size:13px}
@@ -206,7 +205,7 @@ function minimosPorSuper(pd) {
 // ---------- Render ----------
 function render() {
   $("tabs").innerHTML = Object.entries(CATEGORIAS).map(([k, c]) =>
-    `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${c.emoji} ${esc(c.label)}</button>`).join("");
+    `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${c.emoji} ${esc(c.tab || c.label)}</button>`).join("");
   $("rango").innerHTML = [7, 14, 40].map(n => `<button class="${n === dias ? "on" : ""}" data-dias="${n}">${n} días</button>`).join("");
   const unit = CATEGORIAS[cat].unit;
   const UNIDAD = { L: "litro", kg: "kg", m: "metro" };

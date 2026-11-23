@@ -4,7 +4,8 @@
 // (minúsculas, sin acentos), así que escribí los regex sin tildes.
 //
 // Campos:
-//   label, emoji     → cómo se muestra en la pestaña.
+//   label, emoji     → nombre completo (título) y emoji.
+//   tab              → nombre corto para la pestaña (si no está, se usa label).
 //   unit             → "L", "kg" o "m": unidad para comparar precio (por litro / kilo / metro).
 //   medida           → (opcional) "metros": el tamaño se lee como metros × rollos (papel higiénico).
 //   porDefecto       → (opcional) tamaño que se asume si el nombre no lo dice (leches: 1 L).
@@ -28,7 +29,7 @@
 
   const CATEGORIAS = {
     leche: {
-      label: "Leches", emoji: "🥛", unit: "L", porDefecto: 1,
+      label: "Leches", tab: "Leches", emoji: "🥛", unit: "L", porDefecto: 1,
       dia: [vtexCat(DIA, "frescos/leches/leches-enteras"), vtexCat(DIA, "frescos/leches/leches-descremadas")],
       coto: COTO + "/catalogo-frescos-l%C3%A1cteos-leches/_/N-zpvqr7?Nrpp=300&format=json",
       cotoFallback: cotoSearch("leche"),
@@ -40,7 +41,7 @@
       snap: { dia: ["dia-enteras", "dia-descremadas"], coto: "coto", carrefour: ["leche-carrefour-enteras", "leche-carrefour-descremadas"] },
     },
     cafe: {
-      label: "Café molido", emoji: "☕", unit: "kg",
+      label: "Café molido", tab: "Café", emoji: "☕", unit: "kg",
       dia: [diaSearch("cafe molido")],
       coto: cotoSearch("cafe molido"),
       carrefour: [carSearch("cafe molido")],
@@ -52,7 +53,7 @@
       snap: { dia: ["cafe-dia"], coto: "cafe-coto", carrefour: ["cafe-carrefour"] },
     },
     atun: {
-      label: "Atún en lomitos", emoji: "🐟", unit: "kg",
+      label: "Atún en lomitos", tab: "Atún", emoji: "🐟", unit: "kg",
       dia: [diaSearch("atun")],
       coto: cotoSearch("atun"),
       carrefour: [carSearch("atun lomitos")],
@@ -61,7 +62,7 @@
       snap: { dia: ["atun-dia"], coto: "atun-coto", carrefour: ["atun-carrefour"] },
     },
     milasoja: {
-      label: "Milanesas de soja Granja del Sol", emoji: "🌱", unit: "kg",
+      label: "Milanesas de soja Granja del Sol", tab: "Milanesas soja", emoji: "🌱", unit: "kg",
       dia: [diaSearch("milanesa soja")],
       coto: cotoSearch("milanesa soja"),
       carrefour: [carSearch("milanesa soja granja del sol")],
@@ -73,7 +74,7 @@
     // Papel higiénico: se compara el precio por metro (metros por rollo × rollos).
     // Solo entran los que dicen en el nombre si son hoja simple o doble hoja ("S/H", "D/H" en Coto).
     papelsimple: {
-      label: "Papel higiénico hoja simple", emoji: "🧻", unit: "m", medida: "metros",
+      label: "Papel higiénico hoja simple", tab: "Papel simple", emoji: "🧻", unit: "m", medida: "metros",
       dia: [diaSearch("papel higienico")],
       coto: cotoSearch("papel higienico"),
       carrefour: [carSearch("papel higienico"), carSearch("papel higienico").replace("_from=0&_to=49", "_from=50&_to=99")],
@@ -82,7 +83,7 @@
       snap: { dia: ["papelsimple-dia"], coto: "papelsimple-coto", carrefour: ["papelsimple-carrefour", "papelsimple-carrefour-2"] },
     },
     papeldoble: {
-      label: "Papel higiénico doble hoja", emoji: "🧻", unit: "m", medida: "metros",
+      label: "Papel higiénico doble hoja", tab: "Papel doble", emoji: "🧻", unit: "m", medida: "metros",
       dia: [diaSearch("papel higienico")],
       coto: cotoSearch("papel higienico"),
       carrefour: [carSearch("papel higienico"), carSearch("papel higienico").replace("_from=0&_to=49", "_from=50&_to=99")],
