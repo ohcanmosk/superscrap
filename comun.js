@@ -90,7 +90,10 @@
       promos = JSON.parse(g("product.dtoDescuentos") || "[]").map(d => {
         const unit = parseFloat(d.precioDesc);
         const q = (String(d.textoLlevando || "").match(/(\d+)/) || [])[1];
-        return { qty: q ? +q : 1, unit, text: (d.textoDescuento || "").trim() + (q ? " llevando " + q : "") };
+        // "+10%" con imagen comunidad.png = descuento adicional solo para socios de Comunidad Coto.
+        const comunidad = /comunidad/i.test(d.imagenDescuento || "");
+        return { qty: q ? +q : 1, unit, text: (d.textoDescuento || "").trim() + (q ? " llevando " + q : "") + (comunidad ? " Comunidad Coto" : ""),
+          ...(comunidad ? { comunidad: true } : {}) };
       }).filter(x => x.unit > 0 && x.unit < shelf);
     } catch {}
     let list = shelf;
@@ -182,7 +185,11 @@
     return { medio: banco || de("beneficio") || de("todos") || de("tarjeta"), banco: null };
   }
 
-  const api = { numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat, MEDIOS, clasificarMedio };
+  // Promos que puede usar el usuario: las de Comunidad Coto solo si es socio (medio "comunidad").
+  const esComunidad = x => x.comunidad || /comunidad coto/i.test(x.text || "");
+  const promosUsables = (promos, medios) => (promos || []).filter(x => !esComunidad(x) || (medios && medios.comunidad));
+
+  const api = { esComunidad, promosUsables, numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat, MEDIOS, clasificarMedio };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapComun = api;
 })(this);

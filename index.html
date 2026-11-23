@@ -144,6 +144,29 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .promo .legal{font-size:11px;color:var(--muted);max-height:200px;overflow:auto;margin-top:6px;white-space:pre-line}
 .promo .legal a{color:inherit}
 .tagbtn{cursor:pointer;border:0}
+/* Listas */
+.lbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lbar select{flex:1;min-width:160px;padding:8px}
+.lform{display:grid;grid-template-columns:2fr 1fr 1fr 64px auto;gap:6px;margin:10px 0 4px}
+.lform input{padding:8px}
+@media (max-width:700px){.lform{grid-template-columns:1fr 1fr}.lform #lQ{grid-column:1/-1}}
+.litem{border-top:1px solid var(--line);padding:8px 0}
+.lihead{display:flex;gap:8px;align-items:center}
+.lq{flex:1;font-weight:600;font-size:14px;min-width:0}
+.lcant input{width:52px;padding:4px}
+.del{background:none;color:var(--muted);padding:2px 6px;font-weight:400}
+.lcand{display:flex;gap:6px;align-items:center;margin-top:4px;font-size:13px}
+.lcand select{flex:1;min-width:0;padding:4px 6px;font-size:12px}
+.lprecio{font-variant-numeric:tabular-nums;white-space:nowrap;min-width:70px;text-align:right}
+.lauto{margin:0 0 0 16px;font-size:11px}
+.lwin{border-radius:12px;padding:12px 14px;border:1px solid var(--line);margin:10px 0}
+.lwin .store{font-weight:800;font-size:20px} .lwin .price{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.lwin.coto .store{color:var(--coto)} .lwin.dia .store{color:var(--dia)} .lwin.carrefour .store{color:var(--carrefour)}
+.lsup{border-top:1px solid var(--line);padding:8px 0}
+.lsup summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15px}
+.lsup .lt{font-variant-numeric:tabular-nums}
+.lsup.win summary{color:var(--good)}
+.ltab td a{color:inherit}
 .promo.habitual{border:1.5px dashed var(--warn);border-radius:8px;margin-top:6px;background:var(--warn-soft)}
 .promo.habitual .ppct{color:var(--warn)}
 @media (max-width:500px){.promo{grid-template-columns:76px 1fr auto;gap:8px}.logo{max-width:72px;height:22px}.ppct{font-size:19px}}
@@ -283,6 +306,28 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
   </section>
   </div>
 
+  <div id="listView" class="hidden">
+    <section class="card">
+      <div class="lbar"><select id="lSel"></select>
+        <button class="ghost" id="lNueva">+ Nueva</button><button class="ghost" id="lRen">Renombrar</button><button class="ghost" id="lDel">Borrar</button></div>
+      <div class="days" id="lDays" style="margin-top:10px"></div>
+      <div id="lRes"></div>
+    </section>
+    <section class="card">
+      <h2>Productos de la lista</h2>
+      <form id="lForm" class="lform">
+        <input id="lQ" placeholder="Qué buscar (ej: cafe molido -torrado)" autocomplete="off" enterkeyhint="next">
+        <input id="lMarca" placeholder="Marca (opcional)" autocomplete="off">
+        <input id="lTam" placeholder="Tamaño / talle (500 g, 1 L, M)" autocomplete="off">
+        <input id="lCant" type="number" min="1" max="99" value="1" title="Cantidad">
+        <button type="submit">Agregar</button>
+      </form>
+      <div class="sub">Con <b>-palabra</b> se excluye (ej: <i>cafe molido -torrado</i>). Si ponés tamaño, compara el mismo envase; si no, elige el más barato por kg/L. En cada súper podés fijar el producto que quieras.</div>
+      <div id="lItems"></div>
+      <div class="sub" id="lInfo" style="margin-top:8px"></div>
+    </section>
+  </div>
+
   <div id="promoView" class="hidden">
     <section class="card">
       <h2>Mis medios de pago</h2>
@@ -305,6 +350,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 
 <script src="categorias.js"></script>
 <script src="comun.js"></script>
+<script src="listas.js"></script>
 <script>
 "use strict";
 // ---------- Constantes ----------
@@ -314,9 +360,12 @@ const DAYS_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","s
 // Categorías (URLs y filtros) en categorias.js, compartido con scrape.js.
 const { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar } = window.SuperScrapCats;
 // Lectura de tamaños, promos y precios (compartido con scrape.js e historico.html).
-const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS } = window.SuperScrapComun;
+const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS, promosUsables } = window.SuperScrapComun;
+// Promos del producto que el usuario puede usar (las de Comunidad Coto, solo si la marcó en sus medios).
+const promosDe = p => promosUsables(p.promos, S.medios);
 const SEARCH = "busqueda"; // pestaña de búsqueda libre
 const PROMOS = "descuentos"; // pestaña de descuentos con medios de pago
+const LISTAS = "listas";     // pestaña de listas de compras (listas.js)
 const TOP_N = 4;           // cuántos productos se muestran por súper en los rankings
 // Servidor local (iniciar.bat). Si la página se abre con doble clic (file://) se lo busca acá.
 const LOCAL_SERVER = "http://localhost:8787";
@@ -349,7 +398,7 @@ S.pf = Object.assign(structuredClone(DEFAULT_SETTINGS.pf), S.pf);
 // Caché por categoría (la de leches mantiene las claves viejas "products"/"fetchedAt").
 const cacheKey = (c, k) => c === "leche" ? k : k + ":" + c;
 let cat = store.get("cat", "leche");
-if (cat !== SEARCH && cat !== PROMOS && !CATEGORIAS[cat]) cat = "leche";
+if (cat !== SEARCH && cat !== PROMOS && cat !== LISTAS && !CATEGORIAS[cat]) cat = "leche";
 // query = palabras a buscar; qExcl = palabras quitadas (los productos que las tengan no entran en el análisis).
 let query = store.get("query", "");
 let qExcl = store.get("queryExcl", []);
@@ -559,6 +608,11 @@ products = loadProducts(cat);
 let reqId = 0;
 let stockNote = "";
 async function refresh() {
+  if (cat === LISTAS) {
+    ++reqId;
+    const btn = $("btnRefresh"); btn.disabled = true; setStatus("Actualizando catálogo…");
+    await Promise.all([cargarCatalogo(true), loadPromos()]); btn.disabled = false; setStatus(""); render(); return;
+  }
   if (cat === PROMOS) {
     ++reqId; // descarta una consulta de precios que haya quedado en curso
     const btn = $("btnRefresh"); btn.disabled = true; setStatus("Buscando descuentos…");
@@ -571,8 +625,15 @@ async function refresh() {
   const snap = c.snap || {};
   snapUsed = {};
   const dedupe = list => { const seen = new Set(); return list.filter(p => p && !seen.has(p.id) && seen.add(p.id)); };
+  // En la búsqueda libre sin servidor local (web / celular) Dia y Carrefour no se pueden consultar en vivo: se usa el catálogo.
+  const conCatalogo = myCat === SEARCH && (await localServerBase()) == null;
+  const catUsado = [];
   await Promise.all([
     ...["dia", "carrefour"].map(s => (async () => {
+      if (conCatalogo) {
+        try { got[s] = await buscarEnCatalogo(s, c); catUsado.push(s); } catch (e) { errs.push(storeName(s) + ": " + e.message); }
+        return;
+      }
       try {
         const lists = await Promise.all((c[s] || []).map((u, i) => getJSON(u, snap[s]?.[i], s)));
         got[s] = dedupe(lists.flat().map(p => normVtex(p, s)));
@@ -598,6 +659,7 @@ async function refresh() {
     const when = m ? new Date(m.updated).toLocaleString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "?";
     snapNote = snapStores.map(storeName).join(", ") + `: copia automática del ${when}`;
   } else snapNote = "";
+  if (catUsado.length) snapNote = [snapNote, catUsado.map(storeName).join(", ") + `: catálogo del ${catalogoFecha() || "?"}`].filter(Boolean).join(" · ");
   setStatus(errs.length ? "⚠ " + errs.join(" · ") + (products.length ? " (mostrando últimos datos guardados)" : "") : "", !!errs.length);
   render();
   // Stock por local de Dia y Carrefour (después de mostrar precios, para no demorarlos).
@@ -667,7 +729,7 @@ function cuponesDe(st, d) {
     .sort((a, b) => pctDe(b) - pctDe(a));
 }
 // El mejor descuento para un producto: las promos "solo productos sin oferta" (Coto) no aplican si tiene promo u oferta.
-const pagoPara = (p, d) => pagosDe(p.store, d).find(x => !(x.soloSinOferta && (p.promos.length || p.list > p.shelf))) || null;
+const pagoPara = (p, d) => pagosDe(p.store, d).find(x => !(x.soloSinOferta && (promosDe(p).length || p.list > p.shelf))) || null;
 async function loadPromos() {
   const base = await localServerBase();
   const u = base ? base + "/data/promos.json" : location.protocol.startsWith("http") ? "data/promos.json" : null;
@@ -695,10 +757,11 @@ function priceFor(p, d) {
   const conCupon = c => cup && (!c.promo || cup.acumulable) ? { ...c, v: c.v * kc, notes: [...c.notes, cupTxt] } : c;
   // 1 unidad: precio de góndola, o (Coto) descuentos de 1 unidad que vienen en dtoDescuentos.
   const uno = [{ v: p.shelf, notes: [], qty: 1 }];
-  if (p.store === "coto") p.promos.filter(x => x.qty <= 1).forEach(x => uno.push({ v: x.unit, notes: [x.text], promo: true, qty: 1 }));
+  const promos = promosDe(p);
+  if (p.store === "coto") promos.filter(x => x.qty <= 1).forEach(x => uno.push({ v: x.unit, notes: [x.text], promo: true, qty: 1 }));
   const uno2 = uno.flatMap(c => [c, conPago(c)]).map(conCupon);
   const o = menor(uno2);
-  const varios = p.promos.map(x => ({ v: x.unit, notes: [x.text], promo: true, qty: x.qty })).flatMap(c => [c, conPago(c)]).map(conCupon);
+  const varios = promos.map(x => ({ v: x.unit, notes: [x.text], promo: true, qty: x.qty })).flatMap(c => [c, conPago(c)]).map(conCupon);
   const bst = menor(uno2.concat(varios));
   const oferta = p.list > p.shelf ? ["oferta, antes " + fmt(p.list)] : [];
   const oneNote = [...oferta, ...o.notes].join(" · ");
@@ -786,6 +849,7 @@ function render() {
   renderTabs();
   renderMisMediosCfg();
   if (cat === PROMOS) { renderPromos(); return; }
+  if (cat === LISTAS) { renderListas(); return; }
   renderDays();
   const list = filtered().map(p => ({ p, x: priceFor(p, selDay) }));
   const by = (store, mode) => list.filter(e => e.p.store === store).sort((a, b) => cmp(a, b, mode));
@@ -810,15 +874,16 @@ function renderExcl(shown) {
     ? `${hidden} producto${hidden === 1 ? "" : "s"} quitado${hidden === 1 ? "" : "s"} del análisis por: ${qExcl.join(", ")} · quedan ${shown}.` : "";
 }
 function renderTabs() {
-  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + (c.tab || c.label)]), [SEARCH, "🔎 Buscar"], [PROMOS, "💳 Descuentos"]];
+  const tabs = [...Object.entries(CATEGORIAS).map(([k, c]) => [k, c.emoji + " " + (c.tab || c.label)]), [SEARCH, "🔎 Buscar"], [LISTAS, "🧾 Listas"], [PROMOS, "💳 Descuentos"]];
   $("tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${esc(l)}</button>`).join("");
-  const title = cat === PROMOS ? "Descuentos" :
+  const title = cat === PROMOS ? "Descuentos" : cat === LISTAS ? "Listas" :
     cat === SEARCH ? (query ? `“${query}”` + (qExcl.length ? " sin " + qExcl.join(", ") : "") : "Buscar") : conf().label;
   $("title").textContent = "🛒 SuperScrap · " + title;
   document.title = "SuperScrap · " + title;
   $("searchCard").classList.toggle("hidden", cat !== SEARCH);
-  $("prodView").classList.toggle("hidden", cat === PROMOS);
+  $("prodView").classList.toggle("hidden", cat === PROMOS || cat === LISTAS);
   $("promoView").classList.toggle("hidden", cat !== PROMOS);
+  $("listView").classList.toggle("hidden", cat !== LISTAS);
   $("btnRefresh").innerHTML = `↻ Actualizar<span class="hidemob"> ${cat === PROMOS ? "descuentos" : "precios"}</span>`;
   $("lecheFilters").classList.toggle("hidden", cat !== "leche");
 }
@@ -1121,6 +1186,7 @@ $("exclChips").onclick = ev => {
 { const sq = splitQuery(query); if (sq.neg.length) { query = sq.pos; store.set("query", query); addExcl(sq.neg); } }
 $("q").value = query;
 bindSettings();
+initListas();
 render();
 // Los descuentos se cargan aparte (los usan todas las pestañas para el precio del día).
 loadPromos().then(render);

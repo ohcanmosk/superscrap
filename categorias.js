@@ -136,7 +136,10 @@
   };
   const STOCK_CAP = { dia: 24, carrefour: 50 }; // máximo por producto que devuelve cada súper
 
-  const api = { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar, diaSearch, cotoSearch, carSearch };
+  // Catálogo completo de supermercado (lo genera catalogo.js; GitHub Actions lo sube a la rama "catalogo").
+  // raw.githubusercontent.com permite CORS, así que se lee desde la web y el celular.
+  const CATALOGO_URL = "https://raw.githubusercontent.com/ohcanmosk/superscrap/catalogo/";
+  const api = { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, CATALOGO_URL, buscar, diaSearch, cotoSearch, carSearch };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapCats = api;
 })(this);

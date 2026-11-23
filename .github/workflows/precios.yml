@@ -25,3 +25,20 @@ jobs:
           git add data
           git diff --cached --quiet || git commit -m "Precios $(date -u +%Y-%m-%dT%H:%MZ)"
           git push
+      # Catálogo completo de supermercado (búsqueda libre en la web y listas de compras).
+      # Va a la rama "catalogo", que se pisa en cada corrida (sin historial) para que el repo no crezca.
+      # Si un súper falla, catalogo.js deja su archivo anterior (por eso se parte de la rama actual).
+      - name: Catálogo completo
+        continue-on-error: true
+        run: |
+          DIR="$RUNNER_TEMP/catalogo"
+          git clone -q --depth 1 -b catalogo "https://github.com/${{ github.repository }}.git" "$DIR" || mkdir -p "$DIR"
+          rm -rf "$DIR/.git"
+          node catalogo.js "$DIR"
+          cd "$DIR"
+          git init -q -b catalogo
+          git config user.name "superscrap-bot"
+          git config user.email "superscrap-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Catálogo $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" catalogo

@@ -13,6 +13,7 @@ Pestañas (categorías fijas, definidas en `categorias.js`):
 - 🌱 **Milanesas de soja Granja del Sol**.
 - 🧻 **Papel higiénico hoja simple** y **doble hoja** (dos pestañas, para no comparar una contra otra): precio **por metro**. Solo entran los que dicen en el nombre "simple"/"S/H" o "doble hoja"/"D/H" ("doble textura" no cuenta). Cada producto muestra la cuenta (`p.detalle`, de `parseMetrosDetalle`/`tamanoCoto`): "4 rollos × 30 m = 120 m" o "12 m² según Coto ≈ 120 m". Auditado el 23/11/2026: los 97 papeles dan rollos × metros correctos y, en Coto, el precio por m² coincide con los metros del nombre.
 - 🔎 **Buscar**: búsqueda libre del usuario con la misma lógica (ver abajo).
+- 🧾 **Listas**: listas de compras guardadas en el dispositivo; dice a qué súper conviene ir y el total en cada uno (ver "Listas de compras").
 - 💳 **Descuentos**: descuentos con billeteras y bancos que publica cada súper, por día (ver "Descuentos con medios de pago").
 
 ## Archivos
@@ -25,6 +26,8 @@ Pestañas (categorías fijas, definidas en `categorias.js`):
 | `categorias.js` | Config compartida de categorías (URLs de Dia/Coto/Carrefour, filtros regex, unidad, archivos de snapshot) y de "mi zona" (`ZONA`: tiendas cuyo stock se mira). La cargan `index.html` (`window.SuperScrapCats`) y `scrape.js` (`require`). |
 | `promos.js` | Baja los descuentos con medios de pago de Coto, Dia y Carrefour y los normaliza (`bajarPromos`). Lo llama `scrape.js`; también `node promos.js` solo. |
 | `logos/` | Logos de billeteras/bancos (PNG chicos con fondo blanco, sacados de coto.com.ar). Los referencia `MEDIOS[k].logo` en `comun.js`. |
+| `catalogo.js` | Baja el catálogo de supermercado completo de los 3 súper (~33.000 productos, ~1,4 MB comprimido) a `catalogo/<súper>.json` + `meta.json`, formato compacto `[id, sku, nombre, marca, precio, lista, promos, categoría, url]`. GitHub Actions lo sube a la rama **`catalogo`** (force push, sin historial). |
+| `listas.js` | Catálogo en el navegador (`cargarCatalogo`, Cache Storage, se renueva cuando cambia `meta.json`; `buscarEnCatalogo`) y la pestaña 🧾 Listas. Se carga antes del script principal y usa sus funciones (`priceFor`, `pagosDe`, `cuponesDe`, `searchConf`…). |
 | `scrape.js` | Lo corre GitHub Actions (`.github/workflows/precios.yml`, 7:17 y 13:17 AR). Baja todas las categorías y guarda versiones recortadas en `data/*.json` + `data/meta.json` + `data/dia-stock.json` (stock de las tiendas Dia de la zona). |
 | `server.js` | Servidor local Node 18+ sin dependencias (`iniciar.bat`, puerto 8787). Sirve estáticos y hace de proxy `/proxy?url=` (solo hosts de Dia/Coto/Carrefour) porque Dia y Carrefour no permiten CORS. Único POST permitido: la simulación de compra de Dia (`POST_PATHS`). `/ping` responde `superscrap`. |
 | `sw.js` | Service worker: network-first con caché (`superscrap-vN`). **Subí la versión de `CACHE`** si cambiás archivos del shell, y agregá archivos nuevos a `SHELL`. |
@@ -79,6 +82,7 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 - **Fuentes** (`promos.js`, ninguna es oficial):
   - Coto: `coto.com.ar/rest/model/atg/actors/cProfileActor/getPromocionesMulticanal` (JSON, CORS abierto). `promocionesSucursalesFisicas` = local, `promocionesDigitales` = online. `dias[].id`: 1 = domingo … 7 = sábado; vacío = todos. El medio sale de `descripcion` + `icono` (`logo_mercadopago.png`…).
   - Coto, promos puntuales: **no todas están en ese servicio**. Las de fin de semana que Coto publica semana a semana (ej. "DESCUENTOS SÁBADO Y DOMINGO" = 20% con Mercado Pago, "BANCO ICBC FIN DE SEMANA") solo están en los términos legales: `coto.com.ar/sitios/cdigi/terminos-descuentos?format=json` (`Main[0].content` = HTML con `.legal-card` → `.legal-header` / `.legal-body`). `promosCotoLegales` toma las de hasta 4 días (`fechasPuntuales`), con % y medio; el medio lo decide el título (`medioLegal`, el texto solo suma MODO) y se ignoran menciones en negativo ("no válido con Mercado Pago", `sinNegaciones`). Se saltean las regionales (`REGIONAL`) y las que ya están en el servicio. Coto suele publicar la del finde recién en la semana: mientras tanto se muestra como **habitual sin confirmar**.
+- **Comunidad Coto**: en `product.dtoDescuentos` hay promos "+10%" con `imagenDescuento` `comunidad.png`: son solo para socios. `cotoOffer` las marca (`comunidad: true`, texto "… Comunidad Coto") y la app solo las usa si el usuario marcó "Comunidad Coto" en sus medios (`promosDe` / `promosUsables`). El histórico no las cuenta.
 - **Club Dia** (`promosDiaClub`): cupón de los martes de la página `/legales` de Dia (pares `paragraph--main-question-frecuentes` / `paragraph--answer1`, título "Cupón 24/11/2026"): toda la compra, cualquier medio de pago, sin mínimo ni tope. **El legal no dice el %**: se usa 20% (`CLUBDIA_PCT`) porque es lo que comunica Dia ("cupón ClubDia 20% de cada martes"; en redes "hasta 20%"), y se muestra la aclaración (`pctFuente`). Pedido del usuario: no inventar descuentos sin fuente. Exclusiones del legal ("NO INCLUYE…") → `excluye` (leches infantiles, golosinas, vinos, carnes, mostrador); la app las reconoce por la categoría de Dia (`EXCLUYE_RX`, `excluido`; las milanesas de soja no son carne). Es `cupon: true, acumulable: true`: en `priceFor` se aplica **además** del medio de pago y sobre las promos del producto. No se toman el +60 (sin % vigente publicado), cumpleaños ni bienvenida.
 - **Habituales** (`combinarHistorial` en `promos.js`): `promos.json` guarda `vistas` (promos puntuales vistas, 70 días, se acumulan entre corridas) y arma `habituales` = las que terminaron hace 7 días o menos (no las de "1°/2° fin de semana", que son mensuales), con `ultimoPct` y `pcts` vistos (Coto a veces baja el 20% a 15%). La app (`habitualesDe`) las muestra para las fechas hasta 14 días después de la última, si no hay una publicada igual: con borde punteado en Descuentos y "posible −X% (sin confirmar)" en el aviso del día. **No se aplican a los precios.**
   - Dia: la página `/medios-de-pago-y-promociones` trae las tarjetas como JSON (`"cards":[...]`, con `daysToShow`, `availableOn`, `active`, `terms`). Hay más de un bloque: se usa el **último** (el de la página de promos) y se descartan las vencidas leyendo fechas de `terms` (`parseVigencia`). %, tope y mínimo salen del texto legal.
@@ -87,6 +91,19 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 - `MEDIOS` / `clasificarMedio(...textos)` en `comun.js`: catálogo y detección por regex (prioridad billetera > banco > beneficio > "todos los medios" > tarjeta). Para un medio nuevo: agregalo a `MEDIOS` (y su logo a `logos/` si hay).
 - `scrape.js` la corre en cada actualización; si un súper falla, conserva sus promos anteriores vigentes. `bajarPromos` saca vencidas, sin % ni cuotas, y repetidas.
 - La pestaña 💳 Descuentos (`renderPromos`) elige medios (`S.medios`, chips con logo) y lista por día desde hoy (+ "Todos los días"), filtros `S.pf` (mis medios/todos, súper, cuotas) y `S.donde`. El detalle de cada promo (texto legal) va en un `<details>`.
+
+## Catálogo completo
+
+- `catalogo.js`: Dia y Carrefour por categoría hoja del árbol VTEX (`/category/tree/3`, de a 50, máx. 2500 por categoría, 6 en paralelo, reintentos con espera); Coto por categoría Endeca de a 1000 (`Nrpp=1000&No=`). Solo categorías de supermercado (`SUPER[*].rx`). Solo productos con precio y disponibles (`vtexOffer`/`cotoOffer`).
+- Se lee de `CATALOGO_URL` (raw.githubusercontent.com, permite CORS). Con el servidor local, si existe `./catalogo/` (gitignored, `node catalogo.js`) se usa esa.
+- La búsqueda libre sin servidor local (web/celular) usa el catálogo para Dia y Carrefour (Coto sigue en vivo).
+- Precios de hasta ~12 h; sin stock por local.
+
+## Listas de compras
+
+- `listas` / `listaSel` en localStorage (solo en el dispositivo). Ítem = `{ q, marca, tam, cant, fijos: { <súper>: <id> } }`. `q` acepta `-palabra`. `tam`: con número y unidad (500 g, 1 L) compara ese envase (±3%); si no (M, XG, blend) es una palabra que tiene que estar en el nombre (`parseTam`).
+- `candidatos`: con tamaño, el más barato; sin tamaño, el más barato por kg/L. El usuario puede fijar un producto por súper (`fijos`).
+- `costoLinea`: promos por cantidad de a grupos (con 3 y "2da al 50%": 2 con promo + 1 normal). `totalSuper`: prueba cada medio de pago del día (y ninguno) y se queda con el menor total, respetando compra mínima (sobre el total), tope (`topeNum` del texto) y `soloSinOferta`; el medio de pago no se suma a promos del producto salvo `acumulable`. Después el cupón Club Dia (con exclusiones). Orden: primero los súper a los que no les falta nada, después por total.
 
 ## Búsqueda libre
 

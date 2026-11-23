@@ -44,6 +44,10 @@ La configuración se guarda por dispositivo (los de la PC no pasan al celular).
 - Coto: JSON Endeca de `coto.com.ar/sitios/cdigi/categoria/...leches/_/N-zpvqr7?format=json`
   (`sku.activePrice` y `product.dtoDescuentos`, con el precio por unidad de la promo).
 
+## Listas de compras
+
+Pestaña **🧾 Listas**: armás listas (se guardan en tu dispositivo) con lo que comprás: qué buscar (con `-palabra` para excluir), marca, tamaño o talle y cantidad. La app busca cada producto en el catálogo completo de Coto, Dia y Carrefour (lo baja el robot de GitHub 2 veces por día), elige el más conveniente en cada súper (o el que fijes) y te dice **a qué súper conviene ir** el día elegido, con el total de cada uno y el detalle, incluyendo promos y tus medios de pago.
+
 ## Histórico
 
 Botón **📈 Histórico** (arriba a la derecha): página aparte con los últimos 7, 14 o 40 días. Se puede filtrar por súper, formato (ej. café de 250 g o de 500 g), marca y palabras del nombre.

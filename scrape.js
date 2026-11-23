@@ -95,7 +95,8 @@ function productosHistorial(cat, store, j) {
     if (!o || !name || !matchesCat({ name, brand }, c)) return;
     const sz = store === "coto" ? tamanoCoto(name, c, o) : tamano(name, c);
     if (cat === "leche" && (sz.size < 0.5 || sz.size > 2)) return;
-    const best = o.promos.reduce((b, x) => !b || x.unit < b.unit ? x : b, null);
+    // El histórico no cuenta las promos solo para socios de Comunidad Coto.
+    const best = o.promos.filter(x => !x.comunidad).reduce((b, x) => !b || x.unit < b.unit ? x : b, null);
     out[store + ":" + id] = {
       info: [name, (brand || "").toUpperCase(), store, sz ? r2(sz.size) : null, sz ? sz.unit : null],
       // [precio sin promo, precio de lista, mejor precio c/u con promo, unidades que pide la promo, texto de la promo]
