@@ -1,9 +1,30 @@
 {
-  "updated": "2026-11-23T04:34:20.409Z",
+  "updated": "2026-11-23T19:07:50.393Z",
   "ok": {
     "dia-enteras": 16,
     "dia-descremadas": 18,
-    "coto": 92
+    "coto": 92,
+    "leche-carrefour-enteras": 50,
+    "leche-carrefour-descremadas": 50,
+    "cafe-dia": 15,
+    "cafe-coto": 90,
+    "cafe-carrefour": 50,
+    "atun-dia": 13,
+    "atun-coto": 54,
+    "atun-carrefour": 15,
+    "milasoja-dia": 9,
+    "milasoja-coto": 24,
+    "milasoja-carrefour": 50,
+    "papelsimple-dia": 17,
+    "papelsimple-coto": 35,
+    "papelsimple-carrefour": 50,
+    "papelsimple-carrefour-2": 50,
+    "papeldoble-dia": 17,
+    "papeldoble-coto": 35,
+    "papeldoble-carrefour": 50,
+    "papeldoble-carrefour-2": 50,
+    "dia-stock": 88,
+    "carrefour-stock": 315
   },
   "errors": {}
 }

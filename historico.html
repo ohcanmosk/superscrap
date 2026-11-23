@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperScrap Histórico</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#1d1d1b">
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a64; --line:#e4e2da; --grid:#ecebe5;
+  --chip:#efede6; --good:#0f7a43; --good-soft:#e3f4ea; --warn:#9a5b00; --warn-soft:#fff3dc;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+  /* Colores de cada súper (validados para daltonismo contra la superficie clara) */
+  --s-coto:#0a4ea2; --s-dia:#d6001c; --s-carrefour:#00876a;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a19f97; --line:#33322e; --grid:#2a2a27;
+  --chip:#2a2a27; --good:#4fd18b; --good-soft:#15301f; --warn:#ffb84d; --warn-soft:#352812; --shadow:none;
+  --s-coto:#5a95ec; --s-dia:#ef4d5f; --s-carrefour:#1fa088;
+}}
+:root[data-theme="dark"]{
+  --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a19f97; --line:#33322e; --grid:#2a2a27;
+  --chip:#2a2a27; --good:#4fd18b; --good-soft:#15301f; --warn:#ffb84d; --warn-soft:#352812; --shadow:none;
+  --s-coto:#5a95ec; --s-dia:#ef4d5f; --s-carrefour:#1fa088;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0} h2{font-size:17px;margin:0 0 4px} h3{font-size:14px;margin:14px 0 6px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.sub{color:var(--muted);font-size:13px}
+a.back{background:var(--chip);color:var(--ink);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:500}
+button,select{font:inherit;color:inherit}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px;min-width:0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab,.seg button{background:var(--chip);color:var(--ink);border:0;font-weight:500;white-space:nowrap;border-radius:999px;padding:7px 13px;cursor:pointer}
+.tab.on,.seg button.on{background:var(--ink);color:var(--bg);font-weight:700}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;font-size:13px}
+.seg{display:inline-flex;gap:4px}
+select{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:8px 0 4px;color:var(--ink)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid}
+.legend i.dash{border-top-style:dashed}
+.chart{position:relative;width:100%;min-width:0}
+.chart svg{display:block;width:100%;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;z-index:2;display:none}
+.tip b{display:block;margin-bottom:3px}
+.tip .r{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.tip .r i{width:10px;height:3px;border-radius:2px;display:inline-block}
+.tip .r span:last-child{font-variant-numeric:tabular-nums;margin-left:12px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.best{background:var(--good-soft);color:var(--good);font-weight:700}
+td.worst{color:var(--muted)}
+td small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+td.best small{color:inherit;opacity:.8}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:16px}
+details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:8px}
+.promos{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📈 Histórico de precios</h1>
+      <div class="sub">Cómo variaron los precios de Coto, Dia y Carrefour, por día y por día de la semana</div>
+    </div>
+    <a class="back" href="./">← Volver a precios de hoy</a>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div class="filters">
+    <span>Período:</span>
+    <span class="seg" id="rango"></span>
+  </div>
+  <div class="note" id="aviso" hidden></div>
+
+  <section class="card">
+    <h2>Lo más barato de cada súper, día por día</h2>
+    <div class="sub">Precio por <span class="u">kg</span> del producto más barato de cada súper ese día. Línea llena = sin promo (precio de góndola en la web); línea punteada = aprovechando la mejor promo.</div>
+    <div class="legend" id="legDiario"></div>
+    <div class="chart" id="chDiario"></div>
+    <details><summary>Ver como tabla</summary><div class="tablewrap" id="tbDiario"></div></details>
+  </section>
+
+  <section class="card">
+    <h2>¿Qué día de la semana conviene?</h2>
+    <div class="sub">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. En verde, el día más barato de cada súper; abajo, cuánto más caro está cada día respecto de ese.</div>
+    <h3>Sin promo</h3>
+    <div class="tablewrap" id="semSin"></div>
+    <h3>Con promo</h3>
+    <div class="tablewrap" id="semCon"></div>
+  </section>
+
+  <section class="card">
+    <h2>Un producto</h2>
+    <div class="sub">Elegí un producto para ver su precio día por día y qué promo tuvo cada día de la semana.</div>
+    <div class="filters" style="margin:10px 0 4px"><select id="prod"></select></div>
+    <div class="legend" id="legProd"></div>
+    <div class="chart" id="chProd"></div>
+    <h3>Por día de la semana</h3>
+    <div class="tablewrap" id="semProd"></div>
+  </section>
+
+  <div class="sub">Son los precios publicados en la web de cada súper, guardados 2 veces por día (7:17 y 13:17) por el robot de GitHub.
+    No incluyen el descuento de fin de semana de Coto ni Club Dia que configurás en la app, porque no son precios publicados.</div>
+</div>
+
+<script src="categorias.js"></script>
+<script src="comun.js"></script>
+<script>
+"use strict";
+const { CATEGORIAS } = window.SuperScrapCats;
+const STORES = ["coto", "dia", "carrefour"];
+const NAME = { coto: "Coto", dia: "Dia", carrefour: "Carrefour" };
+const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const ORDEN_SEMANA = [1,2,3,4,5,6,0];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+// Sin decimales salvo precios chicos (ej. papel higiénico por metro: $16,58/m).
+const fmt = n => n == null || isNaN(n) ? "—" : "$" + n.toLocaleString("es-AR", { maximumFractionDigits: n < 100 ? 2 : 0 });
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("superscrap:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("superscrap:" + k, JSON.stringify(v)); } catch {} },
+};
+const color = s => getComputedStyle(document.documentElement).getPropertyValue("--s-" + s).trim();
+// Marcas excluidas en la configuración de la app (ej. TREGAR) también se excluyen acá.
+const excluidas = (store.get("settings", {}).excluded || ["TREGAR"]).map(s => s.trim().toUpperCase()).filter(Boolean);
+
+let cat = store.get("histCat", null) || store.get("cat", "leche");
+if (!CATEGORIAS[cat]) cat = "leche";
+let dias = store.get("histDias", 40);
+let prodSel = null;
+let H = null; // historial cargado
+
+// "2026-11-23" → día de la semana (0 = domingo), sin problemas de zona horaria.
+const diaSemana = d => new Date(d + "T12:00:00Z").getUTCDay();
+const ddmm = d => d.slice(8, 10) + "/" + d.slice(5, 7);
+
+// ---------- Datos ----------
+async function cargar() {
+  $("aviso").hidden = true;
+  try {
+    const r = await fetch(`data/historial/${cat}.json`, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    H = await r.json();
+  } catch (e) {
+    H = null;
+    aviso(location.protocol === "file:"
+      ? "Abrí el histórico desde la app (iniciar.bat → http://localhost:8787) o desde GitHub Pages: con doble clic el navegador no deja leer los datos."
+      : "Todavía no hay histórico para esta categoría. Se empieza a juntar cuando el robot de GitHub corre con la versión nueva (2 veces por día).");
+  }
+  render();
+}
+function aviso(t) { $("aviso").textContent = t; $("aviso").hidden = false; }
+
+// Precio de un producto en una toma: { sin, con, txt }. "con" = el menor entre sin promo y la mejor promo c/u.
+function precioToma(v) {
+  const [s, , pu, pq, txt] = v;
+  const con = pu != null && pu < s ? pu : s;
+  const conPromo = pu != null && pu < s;
+  return { sin: s, con, txt: conPromo ? txt + (pq > 1 && !/llevando/i.test(txt) ? ` (llevando ${pq})` : "") : "" };
+}
+// Por día: { "YYYY-MM-DD": { key: { sin, con, txt } } } con el menor precio del día de cada producto.
+function porDia() {
+  const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10);
+  const out = {};
+  for (const t of H.tomas) {
+    if (t.d < desde) continue;
+    const d = (out[t.d] ||= {});
+    for (const [k, v] of Object.entries(t.p)) {
+      const info = H.productos[k]; if (!info) continue;
+      if (excluidas.some(b => info[1].includes(b) || info[0].toUpperCase().includes(b))) continue;
+      const x = precioToma(v), prev = d[k];
+      d[k] = !prev ? x : { sin: Math.min(prev.sin, x.sin), con: Math.min(prev.con, x.con), txt: x.con < prev.con ? x.txt : prev.txt };
+    }
+  }
+  return out;
+}
+// Lo más barato por kg/L de cada súper cada día: { store: { día: { sin:{v,k}, con:{v,k} } } }
+function minimosPorSuper(pd) {
+  const out = Object.fromEntries(STORES.map(s => [s, {}]));
+  for (const [d, prods] of Object.entries(pd)) {
+    for (const [k, x] of Object.entries(prods)) {
+      const [, , s, size] = H.productos[k]; if (!size) continue;
+      const cur = (out[s][d] ||= { sin: null, con: null });
+      for (const m of ["sin", "con"]) {
+        const v = x[m] / size;
+        if (!cur[m] || v < cur[m].v) cur[m] = { v, k, txt: x.txt };
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- Render ----------
+function render() {
+  $("tabs").innerHTML = Object.entries(CATEGORIAS).map(([k, c]) =>
+    `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${c.emoji} ${esc(c.label)}</button>`).join("");
+  $("rango").innerHTML = [7, 14, 40].map(n => `<button class="${n === dias ? "on" : ""}" data-dias="${n}">${n} días</button>`).join("");
+  const unit = CATEGORIAS[cat].unit;
+  const UNIDAD = { L: "litro", kg: "kg", m: "metro" };
+  document.querySelectorAll(".u").forEach(e => e.textContent = UNIDAD[unit] || unit);
+  if (!H) { ["legDiario","chDiario","tbDiario","semSin","semCon","legProd","chProd","semProd"].forEach(id => $(id).innerHTML = ""); $("prod").innerHTML = ""; return; }
+
+  $("aviso").hidden = true;
+  const pd = porDia(), dias_ = Object.keys(pd).sort();
+  if (dias_.length < 7) aviso(`El histórico empezó el ${ddmm(H.tomas[0].d)}: hay ${dias_.length} día${dias_.length === 1 ? "" : "s"} con datos. ` +
+    "El robot de GitHub suma 2 tomas por día; para comparar días de la semana hace falta al menos 1 semana (mejor 3 o más).");
+  const mins = minimosPorSuper(pd);
+  const nombre = k => H.productos[k]?.[0] || k;
+
+  // 1) Línea por día: 3 súper × (sin promo llena, con promo punteada)
+  const series = [];
+  STORES.forEach(s => ["sin", "con"].forEach(m => series.push({
+    name: NAME[s] + (m === "con" ? " con promo" : ""), color: color(s), dash: m === "con", label: m === "sin" ? NAME[s] : null,
+    pts: dias_.map(d => mins[s][d]?.[m] ? { x: d, y: mins[s][d][m].v, det: nombre(mins[s][d][m].k) + (m === "con" && mins[s][d][m].txt ? " · " + mins[s][d][m].txt : "") } : null),
+  })));
+  $("legDiario").innerHTML = STORES.map(s => `<span><i style="border-color:${color(s)}"></i>${NAME[s]}</span>`).join("") +
+    `<span><i style="border-color:var(--muted)"></i>sin promo</span><span><i class="dash" style="border-color:var(--muted)"></i>con promo</span>`;
+  lineChart($("chDiario"), dias_, series, v => fmt(v) + "/" + unit);
+  $("tbDiario").innerHTML = `<table><tr><th>Día</th>${STORES.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
+    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${STORES.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
+
+  // 2) Tablas por día de la semana
+  const semana = m => {
+    const rows = STORES.map(s => {
+      const acc = {}; Object.entries(mins[s]).forEach(([d, x]) => { if (!x[m]) return; const w = diaSemana(d); (acc[w] ||= []).push(x[m].v); });
+      const avg = Object.fromEntries(Object.entries(acc).map(([w, a]) => [w, { v: a.reduce((x, y) => x + y, 0) / a.length, n: a.length }]));
+      const vals = Object.values(avg).map(x => x.v), lo = Math.min(...vals), hi = Math.max(...vals);
+      return `<tr><td><span class="dot" style="background:${color(s)}"></span>${NAME[s]}</td>` + ORDEN_SEMANA.map(w => {
+        const x = avg[w]; if (!x) return `<td class="worst">—</td>`;
+        const best = vals.length > 1 && x.v === lo, pct = (x.v / lo - 1) * 100;
+        return `<td class="${best ? "best" : ""}" title="${x.n} día${x.n === 1 ? "" : "s"} con datos">${fmt(x.v)}<small>${best ? "el más barato" : pct < 0.5 ? "igual" : "+" + pct.toFixed(1) + "%"}</small></td>`;
+      }).join("") + `<td>${vals.length ? ((hi / lo - 1) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
+    });
+    return `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}<th title="Diferencia entre el día más caro y el más barato">Variación</th></tr>${rows.join("")}</table>`;
+  };
+  $("semSin").innerHTML = semana("sin");
+  $("semCon").innerHTML = semana("con");
+
+  // 3) Un producto
+  const keys = Object.keys(H.productos).filter(k => dias_.some(d => pd[d][k]));
+  const grupos = STORES.map(s => {
+    const ks = keys.filter(k => H.productos[k][2] === s).sort((a, b) => nombre(a).localeCompare(nombre(b)));
+    return ks.length ? `<optgroup label="${NAME[s]}">${ks.map(k => `<option value="${esc(k)}">${esc(nombre(k))}</option>`).join("")}</optgroup>` : "";
+  }).join("");
+  $("prod").innerHTML = grupos;
+  if (!keys.includes(prodSel)) {
+    // Por defecto: el más barato con promo del último día.
+    const ult = dias_[dias_.length - 1];
+    prodSel = STORES.map(s => mins[s][ult]?.con?.k).filter(Boolean)
+      .sort((a, b) => pd[ult][a].con / H.productos[a][3] - pd[ult][b].con / H.productos[b][3])[0] || keys[0];
+  }
+  $("prod").value = prodSel;
+  renderProducto(pd, dias_);
+}
+function renderProducto(pd, dias_) {
+  const k = prodSel; if (!k) return;
+  const [name, , s] = H.productos[k];
+  const c = color(s);
+  const series = [
+    { name: "Sin promo", color: c, dash: false, label: "sin promo", pts: dias_.map(d => pd[d][k] ? { x: d, y: pd[d][k].sin } : null) },
+    { name: "Con promo", color: c, dash: true, label: "con promo", pts: dias_.map(d => pd[d][k] ? { x: d, y: pd[d][k].con, det: pd[d][k].txt } : null) },
+  ];
+  $("legProd").innerHTML = `<span><span class="dot" style="background:${c}"></span>${NAME[s]} · ${esc(name)}</span>` +
+    `<span><i style="border-color:${c}"></i>sin promo</span><span><i class="dash" style="border-color:${c}"></i>con promo</span>`;
+  lineChart($("chProd"), dias_, series, fmt);
+  // Tabla por día de la semana del producto
+  const acc = {};
+  dias_.forEach(d => { const x = pd[d][k]; if (!x) return; const w = diaSemana(d); const a = (acc[w] ||= { sin: [], con: [], promos: {} });
+    a.sin.push(x.sin); a.con.push(x.con); if (x.txt) a.promos[x.txt] = (a.promos[x.txt] || 0) + 1; });
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const lo = m => Math.min(...Object.values(acc).map(a => avg(a[m])));
+  const fila = (m, titulo) => `<tr><td>${titulo}</td>${ORDEN_SEMANA.map(w => {
+    const a = acc[w]; if (!a) return `<td class="worst">—</td>`;
+    const v = avg(a[m]), best = Object.keys(acc).length > 1 && v === lo(m);
+    return `<td class="${best ? "best" : ""}" title="${a[m].length} día${a[m].length === 1 ? "" : "s"}">${fmt(v)}${best ? "<small>el más barato</small>" : ""}</td>`;
+  }).join("")}</tr>`;
+  const promos = `<tr><td>Promos vistas</td>${ORDEN_SEMANA.map(w => {
+    const a = acc[w]; if (!a) return `<td class="worst">—</td>`;
+    const t = Object.entries(a.promos); const tot = a.sin.length;
+    return `<td class="promos" style="white-space:normal;min-width:90px;text-align:left">${t.length ? t.map(([x, n]) => `${esc(x)} <span title="días con esa promo / días con datos">(${n}/${tot})</span>`).join("<br>") : "ninguna"}</td>`;
+  }).join("")}</tr>`;
+  $("semProd").innerHTML = `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}</tr>${fila("sin", "Sin promo")}${fila("con", "Con promo c/u")}${promos}</table>`;
+}
+
+// ---------- Gráfico de líneas (SVG) con cruz y tooltip ----------
+function lineChart(el, xs, series, fmtY) {
+  const draw = () => {
+    const W = Math.max(el.clientWidth, 280), Hh = W < 500 ? 220 : 260;
+    const m = { t: 10, r: W < 500 ? 70 : 96, b: 26, l: 62 };
+    const iw = W - m.l - m.r, ih = Hh - m.t - m.b;
+    const ys = series.flatMap(s => s.pts.filter(Boolean).map(p => p.y));
+    if (!xs.length || !ys.length) { el.innerHTML = `<div class="empty">Sin datos en este período.</div>`; return; }
+    let lo = Math.min(...ys), hi = Math.max(...ys); const pad = (hi - lo) * 0.08 || hi * 0.05 || 1; lo -= pad; hi += pad;
+    const X = i => m.l + (xs.length === 1 ? iw / 2 : i * iw / (xs.length - 1));
+    const Y = v => m.t + ih - (v - lo) / (hi - lo) * ih;
+    const ticks = 4, step = (hi - lo) / ticks;
+    let g = "";
+    for (let i = 0; i <= ticks; i++) { const v = lo + i * step, y = Y(v);
+      g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>` +
+           `<text x="${m.l - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${esc(fmtY(v))}</text>`; }
+    const every = Math.max(1, Math.ceil(xs.length / (iw / 52)));
+    // Fechas cada "every" días; la última siempre, salvo que quede pegada a la anterior.
+    xs.forEach((d, i) => { const last = i === xs.length - 1;
+      if ((i % every === 0 && !(i > xs.length - 1 - every && !last && xs.length > every)) || last)
+      g += `<text x="${X(i)}" y="${Hh - 6}" text-anchor="middle" font-size="11" fill="var(--muted)">${ddmm(d)}</text>`; });
+    // Líneas (cortadas donde falta un día) + puntos
+    const labels = [];
+    series.forEach(s => {
+      let dpath = "", pen = false;
+      s.pts.forEach((p, i) => { if (!p) { pen = false; return; } dpath += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(p.y).toFixed(1); pen = true; });
+      g += `<path d="${dpath}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ""}/>`;
+      if (xs.length <= 20) s.pts.forEach((p, i) => { if (p) g += `<circle cx="${X(i)}" cy="${Y(p.y)}" r="${s.dash ? 3 : 4}" fill="${s.dash ? "var(--card)" : s.color}" stroke="${s.color}" stroke-width="2"/>`; });
+      const lastI = s.pts.map((p, i) => p ? i : -1).filter(i => i >= 0).pop();
+      if (s.label && lastI != null) labels.push({ y: Y(s.pts[lastI].y), x: X(lastI), text: s.label });
+    });
+    // Etiquetas directas al final de cada línea, separadas para que no se pisen
+    labels.sort((a, b) => a.y - b.y).forEach((l, i, arr) => { if (i && l.y - arr[i - 1].y < 14) l.y = arr[i - 1].y + 14; });
+    labels.forEach(l => g += `<text x="${m.l + iw + 8}" y="${l.y + 4}" font-size="12" fill="var(--ink)">${esc(l.text)}</text>`);
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" height="${Hh}" role="img" aria-label="Gráfico de precios">${g}
+      <line class="cross" y1="${m.t}" y2="${m.t + ih}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>
+      <rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg><div class="tip"></div>`;
+    const svg = el.querySelector("svg"), cross = el.querySelector(".cross"), tip = el.querySelector(".tip");
+    const move = ev => {
+      const r = svg.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      const i = xs.length === 1 ? 0 : Math.max(0, Math.min(xs.length - 1, Math.round((px * W / r.width - m.l) / iw * (xs.length - 1))));
+      const rows = series.map(s => ({ s, p: s.pts[i] })).filter(x => x.p).sort((a, b) => a.p.y - b.p.y);
+      if (!rows.length) { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); return; }
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
+      tip.innerHTML = `<b>${DIAS[diaSemana(xs[i])]} ${ddmm(xs[i])}</b>` + rows.map(({ s, p }) =>
+        `<div class="r"><span><i style="background:${s.color};${s.dash ? "opacity:.55" : ""}"></i> ${esc(s.name)}${p.det ? `<br><span class="sub">${esc(p.det)}</span>` : ""}</span><span>${esc(fmtY(p.y))}</span></div>`).join("");
+      tip.style.display = "block";
+      const left = X(i) / W * r.width, tw = tip.offsetWidth;
+      tip.style.left = Math.min(Math.max(0, left + 12 + tw > r.width ? left - tw - 12 : left + 12), r.width - tw) + "px";
+      tip.style.top = "8px";
+    };
+    const leave = () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); };
+    svg.addEventListener("mousemove", move); svg.addEventListener("touchstart", move, { passive: true });
+    svg.addEventListener("touchmove", move, { passive: true }); svg.addEventListener("mouseleave", leave);
+  };
+  draw();
+  if (!el._ro) { let w = el.clientWidth; el._ro = new ResizeObserver(() => { if (Math.abs(el.clientWidth - w) > 4) { w = el.clientWidth; el._draw(); } }); el._ro.observe(el); }
+  el._draw = draw;
+}
+
+// ---------- Eventos ----------
+$("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; cargar(); };
+$("rango").onclick = ev => { const n = +ev.target.dataset?.dias; if (!n) return; dias = n; store.set("histDias", dias); render(); };
+$("prod").onchange = () => { prodSel = $("prod").value; render(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => H && render());
+cargar();
+</script>
+</body>
+</html>

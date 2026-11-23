@@ -1,12 +1,24 @@
-# SuperScrap · Leches
+# SuperScrap
 
-Compara las leches más baratas de **Dia** y **Coto** (con y sin promo), según el día de la semana.
+Compara los productos más baratos de **Coto**, **Dia** y **Carrefour** (con y sin promo), según el día de la semana.
+
+**Solo con stock en mi zona** (Ituzaingó, Castelar, Morón): oculta lo que no hay. Muestra el stock por localidad
+("Castelar: 1 de 3 locales"; tocando la etiqueta se ve cada local):
+- Dia: 2 locales en Ituzaingó, 2 en Castelar y 3 en Morón (unidades hasta 24).
+- Coto: Morón (opcional Ciudadela y Moreno). Coto no publica Castelar y en Ituzaingó no hay Coto.
+- Carrefour: opcional Hiper Moreno y San Justo (apagados por defecto), hasta 50 u. El Hiper Ituzaingó (Ratti) y los Carrefour Express no publican stock.
+
+Los locales se eligen en Configuración → Mi zona.
+
+Pestañas: 🥛 Leches · ☕ Café molido (sin torrado) · 🐟 Atún en lomitos · 🌱 Milanesas de soja Granja del Sol ·
+🧻 Papel higiénico hoja simple · 🧻 Papel higiénico doble hoja · 🔎 Buscar (cualquier producto).
+Se ordena por precio por kilo, litro o metro (papel: metros por rollo × rollos) cuando el envase lo indica.
 
 ## Cómo usarla
 
 - **Recomendado:** doble clic en `iniciar.bat` (necesita Node 18+). Se abre `http://localhost:8787`.
   El servidor (`server.js`, sin dependencias) solo sirve la página y reenvía los pedidos a Dia, porque la web de Dia no permite consultas directas desde el navegador.
-- **Sin servidor:** abrí `index.html` directamente. Coto se consulta directo; para Dia intenta pasar por proxies públicos (allorigins / corsproxy), que pueden fallar.
+- **Doble clic en `index.html`:** funciona solo si `iniciar.bat` está corriendo (usa ese servidor). Sin servidor, Dia no se puede consultar.
 
 ## En el celular
 
@@ -32,11 +44,30 @@ Los registros de góndola y la configuración se guardan por dispositivo (los de
 - Coto: JSON Endeca de `coto.com.ar/sitios/cdigi/categoria/...leches/_/N-zpvqr7?format=json`
   (`sku.activePrice` y `product.dtoDescuentos`, con el precio por unidad de la promo).
 
+## Histórico
+
+Botón **📈 Histórico** (arriba a la derecha): página aparte con los últimos 7, 14 o 40 días.
+- Lo más barato de cada súper día por día, sin promo y con promo.
+- **¿Qué día de la semana conviene?**: promedio por día de la semana de cada súper, sin promo y con promo, con el día más barato marcado.
+- **Un producto**: su precio día por día y qué promo tuvo cada día de la semana.
+
+Los datos los junta el robot de GitHub (2 veces por día) en `data/historial/`, así que el histórico crece solo una vez subido el proyecto.
+
+## Búsqueda libre
+
+Escribí lo que buscás (ej. `cafe cabrales`). Se buscan en Dia y Coto y quedan solo los productos que tienen **todas**
+las palabras en el nombre. En **Quitar palabras** cargá lo que no querés (ej. `torrado, capsulas`): los productos que
+lo tengan en el nombre no entran en el análisis. También vale escribirlo directo: `cafe cabrales -torrado`.
+Cada palabra quitada aparece como chip con ✕ para volver a incluirla, y la app indica cuántos productos se quitaron. En la versión web (GitHub Pages)
+la búsqueda en Dia depende de proxies públicos y puede fallar; con `iniciar.bat` funciona siempre.
+
+Las categorías fijas se configuran en `categorias.js`.
+
 ## Reglas
 
 - **Coto fin de semana:** % configurable para sábado y domingo (15% por defecto). Se aplica solo a productos sin promo.
 - **Club Dia:** % configurable por día, para todas las leches o solo para la marca DIA. Por defecto no suma a las promos.
 - Marcas excluidas: TREGAR por defecto (editable).
-- Se excluyen chocolatadas, en polvo, condensadas, infantiles y vegetales. Las "especiales" (0% lactosa, proteína, etc.) se pueden activar.
+- Leches: se excluyen chocolatadas, en polvo, condensadas, infantiles y vegetales. Las "especiales" (0% lactosa, proteína, etc.) se pueden activar.
 
 Configuración, registros de góndola y últimos precios se guardan en el navegador (localStorage).

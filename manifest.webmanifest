@@ -1,7 +1,7 @@
 {
-  "name": "SuperScrap Leches",
-  "short_name": "Leches",
-  "description": "Dia vs Coto: las leches más baratas, con y sin promo",
+  "name": "SuperScrap",
+  "short_name": "SuperScrap",
+  "description": "Dia vs Coto: leches, café, atún, milanesas de soja y lo que busques, con y sin promo",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

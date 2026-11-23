@@ -1,0 +1,115 @@
+// SuperScrap - funciones compartidas entre index.html, historico.html y scrape.js:
+// leer tamaños, promos y precios de Dia/Carrefour (VTEX) y Coto, y filtrar por categoría.
+// Así el histórico que guarda scrape.js calcula los precios igual que la app.
+
+(function (root) {
+  const numAR = s => parseFloat(String(s).replace(/\./g, "").replace(",", "."));
+  const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  // Tamaño del envase a partir del nombre: { size, unit } en kg o L, o null si no se puede saber.
+  // Entiende "250 Gr.", "1,1 Kg.", "1k", "500 ml", "1 Lt." y packs "3 x 170 g".
+  function parseSize(name) {
+    const n = norm(name);
+    const m = n.match(/(\d+(?:[.,]\d+)?)\s*(kgm|kgs?|kilos?|k|grm|grs?|gramos?|g|ml|cc|ltr|lts?|litros?|l)(?![a-z])/);
+    if (!m) return null;
+    let v = parseFloat(m[1].replace(",", "."));
+    if (!v) return null;
+    const u = m[2];
+    const weight = /^(k|g)/.test(u);
+    if (/^(g|ml|cc)/.test(u)) v /= 1000;
+    const pack = n.slice(0, m.index + m[0].length).match(/(\d+)\s*x\s*\d+(?:[.,]\d+)?\s*[a-z]+$/);
+    if (pack) v *= +pack[1];
+    return { size: v, unit: weight ? "kg" : "L" };
+  }
+
+  // Papel higiénico: metros totales del paquete = metros por rollo × rollos.
+  // Entiende "30 mts 4 Ud.", "4 x 30 mts", "x12 30 mts", "4 u. x 20 m.", "4 rollos de 30m", "30 M 4 Un", "x 120 mts".
+  // Coto a veces pone el área del paquete ("Paq 12 M2"): con rollos de 10 cm de ancho, 12 m² = 120 m.
+  // null si no dice los metros.
+  function parseMetros(name) {
+    const area = norm(name).match(/(?:paq|bol)\.?\s*(\d+(?:[.,]\d+)?)\s*m2\b/);
+    if (area) return parseFloat(area[1].replace(",", ".")) * 10;
+    const n = norm(name).replace(/\bm2\b/g, " ");
+    const m = n.match(/(\d+(?:[.,]\d+)?)\s*(?:metros?|mtrs?|mts?|m)(?![a-z0-9])\.?/);
+    if (!m) return null;
+    const metros = parseFloat(m[1].replace(",", "."));
+    if (!metros) return null;
+    const resto = n.slice(0, m.index) + " " + n.slice(m.index + m[0].length);
+    const r = resto.match(/(\d+)\s*(?:u\b|u\.|un\b|uni\b|unid\w*|ud\b|ud\.|rollos?)/) ||
+              resto.match(/\bx\s*(\d+)\b/) || resto.match(/\b(\d+)\s*x\b/);
+    return metros * (r ? +r[1] : 1);
+  }
+  // Tamaño según la categoría: c.medida = "metros" (papel), c.porDefecto (leches: 1 L si no lo dice).
+  function tamano(name, c) {
+    if (c && c.medida === "metros") { const m = parseMetros(name); return m ? { size: m, unit: "m" } : null; }
+    const s = parseSize(name);
+    if (c && c.porDefecto) return { size: s && s.unit === c.unit ? s.size : c.porDefecto, unit: c.unit };
+    return s;
+  }
+
+  // Promos de Dia/Carrefour: "Llevando 2 a $X c/u", "3x2", "2do al 70%", "20%".
+  function parseDiaTeaser(name, price) {
+    const t = name.trim(); let m;
+    if ((m = t.match(/llevando\s*(\d+)\s*a\s*\$\s*([\d.,]+)/i))) return { qty: +m[1], unit: numAR(m[2]), text: t };
+    if ((m = t.match(/(\d)\s*x\s*(\d)/i))) { const a = +m[1], b = +m[2]; return { qty: a, unit: price * b / a, text: t }; }
+    if ((m = t.match(/(\d)\s*(?:do|da|°|º)?\s*(?:unidad|u\.?)?\s*al\s*(\d+)\s*%/i))) {
+      const q = +m[1], p = +m[2]; return { qty: q, unit: price * (q - p / 100) / q, text: t };
+    }
+    if ((m = t.match(/(\d+)\s*%/))) return { qty: 1, unit: price * (1 - m[1] / 100), text: t };
+    return null;
+  }
+  // Carrefour: "PROMO-2do al 50% Max 8 unidades Combinable CABRALES-Reg-2-50-Ahorro18 al 24/11" → "2do al 50%".
+  // Se ignoran las promos con Tarjeta / Cuenta Digital Carrefour (no las tiene cualquiera).
+  function cleanCarrefourTeaser(t) {
+    if (/tarjeta|cuenta digital|mi carrefour|credito|debito/i.test(t)) return null;
+    return t.replace(/^PROMO-/i, "").replace(/\s*(Max|Combinable|Iguales|-Reg-).*$/i, "").trim() || null;
+  }
+
+  // Precio y promos de un producto VTEX (Dia / Carrefour). null si no está disponible.
+  function vtexOffer(p, storeId) {
+    const o = p.items?.[0]?.sellers?.[0]?.commertialOffer;
+    if (!o || !o.Price || !o.IsAvailable) return null;
+    const teasers = (o.Teasers || []).map(t => t["<Name>k__BackingField"] || t.Name || "")
+      .map(t => storeId === "carrefour" ? cleanCarrefourTeaser(t) : t).filter(Boolean);
+    const promos = teasers.map(t => parseDiaTeaser(t, o.Price)).filter(x => x && x.unit > 0 && x.unit < o.Price);
+    return { shelf: o.Price, list: Math.max(o.ListPrice || 0, o.Price), promos };
+  }
+  // Precio y promos de un producto de Coto (atributos Endeca). null si no tiene precio.
+  function cotoOffer(a) {
+    const g = k => (a[k] || [])[0];
+    const shelf = parseFloat(g("sku.activePrice"));
+    if (!shelf) return null;
+    let promos = [];
+    try {
+      promos = JSON.parse(g("product.dtoDescuentos") || "[]").map(d => {
+        const unit = parseFloat(d.precioDesc);
+        const q = (String(d.textoLlevando || "").match(/(\d+)/) || [])[1];
+        return { qty: q ? +q : 1, unit, text: (d.textoDescuento || "").trim() + (q ? " llevando " + q : "") };
+      }).filter(x => x.unit > 0 && x.unit < shelf);
+    } catch {}
+    let list = shelf;
+    try { const dp = JSON.parse(g("sku.dtoPrice") || "{}"); if (dp.precioLista > shelf) list = dp.precioLista; } catch {}
+    // Precio por unidad de medida que publica Coto (en papel higiénico: por m²).
+    const ref = parseFloat(g("sku.referencePrice")) || null;
+    return { shelf, list, promos, ref };
+  }
+  // Tamaño de un producto de Coto: en papel higiénico se usa su precio por m² (precio ÷ precio por m² = m²;
+  // rollos de 10 cm de ancho → m² × 10 = metros), que está aunque el nombre no diga los metros.
+  function tamanoCoto(name, c, o) {
+    if (c && c.medida === "metros" && o && o.ref) return { size: Math.round(o.shelf / o.ref * 10), unit: "m" };
+    return tamano(name, c);
+  }
+
+  // ¿El producto ({ name, brand }) entra en la categoría (include / exclude / brand)?
+  function matchesCat(p, c) {
+    const n = norm(p.name);
+    if ((c.include || []).some(rx => !rx.test(n))) return false;
+    if (c.exclude && c.exclude.test(n)) return false;
+    if (c.brand && !c.brand.test(norm(p.brand)) && !c.brand.test(n)) return false;
+    return true;
+  }
+
+  const api = { numAR, norm, parseSize, parseMetros, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.SuperScrapComun = api;
+})(this);
