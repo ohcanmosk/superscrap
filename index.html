@@ -112,6 +112,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .brand{background:var(--chip);color:var(--ink);font-weight:500;font-size:13px;padding:5px 10px;border-radius:999px}
 .brand small{color:var(--muted);margin-left:3px}
 .brand.on{background:var(--ink);color:var(--bg)} .brand.on small{color:inherit;opacity:.7}
+.brand .dot{margin-right:5px;vertical-align:0}
 .chipx button{background:none;color:inherit;padding:0 6px;font-weight:700;border-radius:999px}
 /* Descuentos con medios de pago */
 .logo{height:26px;width:auto;max-width:92px;object-fit:contain;background:#fff;border-radius:6px;padding:2px 5px;display:block}
@@ -275,6 +276,7 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
   <section class="card">
     <details>
       <summary>Todos los productos (<span id="allCount">0</span>)</summary>
+      <div class="brands" id="allStores"></div>
       <div class="brands" id="brands"></div>
       <div class="tablewrap" style="margin-top:10px"><table id="allTable"></table></div>
     </details>
@@ -919,8 +921,23 @@ $("brands").onclick = ev => {
   if (!k) brandSel.clear(); else brandSel.has(k) ? brandSel.delete(k) : brandSel.add(k);
   saveBrands(); render();
 };
+// Filtro por súper de "Todos los productos" (multi-selección; vacío = todos). Se guarda para todas las pestañas.
+let storeSel = new Set(store.get("allStores", []));
+function renderStoresFilter(all) {
+  const n = s => all.filter(({ p }) => p.store === s).length;
+  $("allStores").innerHTML = `<button class="brand ${storeSel.size ? "" : "on"}" data-store="">Todos los súper<small>${all.length}</small></button>` +
+    STORES.map(s => `<button class="brand ${storeSel.has(s) ? "on" : ""}" data-store="${s}"><span class="dot ${s}"></span>${storeName(s)}<small>${n(s)}</small></button>`).join("");
+  return storeSel.size ? all.filter(({ p }) => storeSel.has(p.store)) : all;
+}
+$("allStores").onclick = ev => {
+  const b = ev.target.closest("[data-store]"); if (!b) return;
+  const s = b.dataset.store;
+  if (!s) storeSel.clear(); else storeSel.has(s) ? storeSel.delete(s) : storeSel.add(s);
+  store.set("allStores", [...storeSel]); render();
+};
 function renderAll(all) {
-  const list = renderBrands(all);
+  // Primero el súper; las marcas (y sus cantidades) son las de los súper elegidos.
+  const list = renderBrands(renderStoresFilter(all));
   $("allCount").textContent = list.length === all.length ? all.length : `${list.length} de ${all.length}`;
   const rows = list.slice().sort((a, b) => cmp(a, b, "one")).map(({ p, x }) => `<tr>
     <td><span class="tag ${p.store}">${storeName(p.store)}</span></td>

@@ -101,8 +101,9 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 2. `snap` = `{ dia: [un nombre por URL], coto: "nombre", carrefour: [un nombre por URL] }`.
 3. Corré `node scrape.js` para generar los `data/*.json` nuevos. La pestaña aparece sola.
 
-## Filtro por marca
+## Filtro por súper y por marca
 
+En "Todos los productos" hay chips por súper (`storeSel`, multi-selección, se guarda en `allStores` para todas las pestañas); las marcas y sus cantidades son las de los súper elegidos.
 En "Todos los productos" hay chips por marca (con cantidad), multi-selección; "Todas" limpia. Solo filtra esa tabla, no los rankings ni el veredicto. Las marcas se agrupan con `brandKey` (sin acentos, sin "La/El/Los/Las" al principio) porque Dia y Coto las escriben distinto. La selección se guarda por categoría (`brands` / `brands:<cat>`) y se limpia al hacer una búsqueda nueva.
 
 ## Estado en el navegador (localStorage, prefijo `superscrap:`)
