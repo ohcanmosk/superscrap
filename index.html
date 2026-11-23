@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperScrap Leches</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1d1d1b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a64; --line:#e4e2da;
+  --dia:#d6001c; --dia-soft:#fde8ea; --coto:#0a4ea2; --coto-soft:#e6eefa;
+  --good:#0f7a43; --good-soft:#e3f4ea; --warn:#9a5b00; --warn-soft:#fff3dc;
+  --chip:#efede6; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a19f97; --line:#33322e;
+  --dia:#ff5a6b; --dia-soft:#3a1a1e; --coto:#6aa5ff; --coto-soft:#162438;
+  --good:#4fd18b; --good-soft:#15301f; --warn:#ffb84d; --warn-soft:#352812;
+  --chip:#2a2a27; --shadow:none;
+}}
+:root[data-theme="dark"]{
+  --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a19f97; --line:#33322e;
+  --dia:#ff5a6b; --dia-soft:#3a1a1e; --coto:#6aa5ff; --coto-soft:#162438;
+  --good:#4fd18b; --good-soft:#15301f; --warn:#ffb84d; --warn-soft:#352812;
+  --chip:#2a2a27; --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0}
+h2{font-size:17px;margin:0 0 12px}
+h3{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.sub{color:var(--muted);font-size:13px}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--ink);color:var(--bg);border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
+button.ghost{background:var(--chip);color:var(--ink);font-weight:500}
+button:disabled{opacity:.5;cursor:wait}
+input,select{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:6px 8px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.days{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.day{background:var(--chip);color:var(--ink);font-weight:500;padding:6px 10px;border-radius:999px;font-size:13px;position:relative}
+.day.on{background:var(--ink);color:var(--bg)}
+.day.today::after{content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--good)}
+.daynote{font-size:13px;margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.tag.coto{background:var(--coto-soft);color:var(--coto)}
+.tag.dia{background:var(--dia-soft);color:var(--dia)}
+.tag.good{background:var(--good-soft);color:var(--good)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.verdict{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.verdict .store{font-weight:800;font-size:20px}
+.verdict.coto .store{color:var(--coto)} .verdict.dia .store{color:var(--dia)}
+.verdict .price{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.verdict .vs{font-size:13px;color:var(--muted);margin-top:6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.cols{grid-template-columns:1fr}}
+.col h4{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot.coto{background:var(--coto)} .dot.dia{background:var(--dia)}
+.item{display:grid;grid-template-columns:22px 44px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.rank{font-weight:800;color:var(--muted);text-align:center}
+.item img{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:8px}
+.item .name{font-size:13px;line-height:1.3}
+.item .name a{color:inherit;text-decoration:none}
+.item .name a:hover{text-decoration:underline}
+.item .note{font-size:12px;color:var(--muted)}
+.item .p{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.item .p b{font-size:16px}
+.item .p s{color:var(--muted);font-size:12px}
+.item.win{background:linear-gradient(90deg,var(--good-soft),transparent);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tablewrap{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end;margin-top:12px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.form label.wide{grid-column:span 2}
+@media (max-width:500px){.form label.wide{grid-column:auto}}
+details summary{cursor:pointer;font-weight:700;font-size:16px}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:12px}
+.settings fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0}
+.settings legend{font-weight:700;font-size:13px;padding:0 4px}
+.row{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px;flex-wrap:wrap}
+.row input[type=number]{width:70px}
+.wkgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;text-align:center}
+.wkgrid input{width:100%;text-align:center;padding:4px 2px}
+.status{font-size:13px;color:var(--muted)}
+.status.err{color:var(--dia)}
+.del{background:none;color:var(--muted);padding:2px 6px;font-weight:400}
+.pos{color:var(--dia)} .neg{color:var(--good)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+.grid2>*,.cols>*,.form>*,.item>*,.settings>*{min-width:0}
+.form select,.form input{width:100%}
+#insitu td:nth-child(3){min-width:150px}
+@media (max-width:500px){
+  .wrap{padding:14px 12px 40px} .card{padding:12px} .verdict .price{font-size:24px}
+  header>div:last-child{width:100%;justify-content:space-between}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🛒 SuperScrap · Leches</h1>
+      <div class="sub">Dia vs Coto: las 3 más baratas, con y sin promo, según el día</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span id="status" class="status"></span>
+      <button id="btnRefresh">Actualizar precios</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h3>Día de compra</h3>
+    <div class="days" id="days"></div>
+    <div class="daynote" id="daynote"></div>
+  </section>
+
+  <section class="card">
+    <h2>¿Dónde conviene comprar?</h2>
+    <div class="grid2" id="verdicts"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sin promo · comprando 1 unidad</h2>
+    <div class="sub" style="margin:-6px 0 10px">Precio que pagás llevando una sola. Incluye el descuento de fin de semana de Coto (solo en productos sin promo) y Club Dia si está activo.</div>
+    <div class="cols" id="rankOne"></div>
+  </section>
+
+  <section class="card">
+    <h2>Con promo · mejor precio por unidad</h2>
+    <div class="sub" style="margin:-6px 0 10px">Precio por unidad aprovechando la promo (2da al 50%, llevando 2, 3x2…). Si la promo no conviene, se usa el precio de 1 unidad.</div>
+    <div class="cols" id="rankPromo"></div>
+  </section>
+
+  <section class="card">
+    <h2>Góndola vs online</h2>
+    <div class="sub" style="margin:-6px 0 10px">Lo que viste en el local comparado con el precio de la web ese día y hoy.</div>
+    <div class="tablewrap"><table id="insitu"></table></div>
+    <div class="form" id="insituForm">
+      <label>Fecha<input type="date" id="fDate"></label>
+      <label>Súper<select id="fStore"><option value="coto">Coto</option><option value="dia">Dia</option></select></label>
+      <label class="wide">Producto (de la web)<select id="fProd"></select></label>
+      <label>Precio góndola $<input type="number" step="0.01" id="fShelf" placeholder="2799"></label>
+      <label>Precio c/promo c/u $<input type="number" step="0.01" id="fPromo" placeholder="opcional"></label>
+      <label>Nota promo<input type="text" id="fNote" placeholder="2da al 50%"></label>
+      <button id="fAdd">Agregar</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Configuración de descuentos y filtros</summary>
+      <div class="settings">
+        <fieldset>
+          <legend>Coto · descuento de fin de semana</legend>
+          <div class="sub">Aplica solo a productos <b>sin</b> promoción.</div>
+          <div class="row">Sábado <input type="number" id="cSat" min="0" max="100"> %</div>
+          <div class="row">Domingo <input type="number" id="cSun" min="0" max="100"> %</div>
+        </fieldset>
+        <fieldset>
+          <legend>Club Dia</legend>
+          <div class="row"><label><input type="checkbox" id="clubOn"> Tengo Club Dia</label></div>
+          <div class="sub">% de descuento por día (cambia según la semana, revisá la app de Dia):</div>
+          <div class="wkgrid" id="clubDays"></div>
+          <div class="row">Aplica a
+            <select id="clubScope"><option value="all">todas las leches</option><option value="dia">solo marca DIA</option></select>
+          </div>
+          <div class="row"><label><input type="checkbox" id="clubStack"> Se suma a las promos de Dia</label></div>
+        </fieldset>
+        <fieldset>
+          <legend>Filtros</legend>
+          <div class="row">Marcas excluidas <input type="text" id="excl" style="flex:1" placeholder="TREGAR, ..."></div>
+          <div class="row"><label><input type="checkbox" id="tEntera"> Enteras</label> <label><input type="checkbox" id="tDesc"> Descremadas / semi</label></div>
+          <div class="row"><label><input type="checkbox" id="tLarga"> Larga vida (cartón/botella)</label></div>
+          <div class="row"><label><input type="checkbox" id="tSachet"> Sachet / fresca</label></div>
+          <div class="row"><label><input type="checkbox" id="tSpecial"> Incluir especiales (0% lactosa, proteína, etc.)</label></div>
+        </fieldset>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Todas las leches (<span id="allCount">0</span>)</summary>
+      <div class="tablewrap" style="margin-top:10px"><table id="allTable"></table></div>
+    </details>
+  </section>
+</div>
+
+<script>
+"use strict";
+// ---------- Constantes ----------
+const TZ = "America/Argentina/Buenos_Aires";
+const DAYS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const DAYS_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const DIA_BASE = "https://diaonline.supermercadosdia.com.ar";
+const SOURCES = {
+  dia: [
+    DIA_BASE + "/api/catalog_system/pub/products/search/frescos/leches/leches-enteras?map=c,c,c&_from=0&_to=49&O=OrderByPriceASC",
+    DIA_BASE + "/api/catalog_system/pub/products/search/frescos/leches/leches-descremadas?map=c,c,c&_from=0&_to=49&O=OrderByPriceASC",
+  ],
+  coto: "https://www.coto.com.ar/sitios/cdigi/categoria/catalogo-frescos-l%C3%A1cteos-leches/_/N-zpvqr7?Nrpp=300&format=json",
+  cotoFallback: "https://www.coto.com.ar/sitios/cdigi/categoria?Ntt=leche&Nrpp=1000&format=json",
+};
+const PUBLIC_PROXIES = [
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+];
+const SPECIAL_RX = /lactosa|protein|prote[ií]na|colageno|colágeno|calcio|multidefensa|sense|kids|crecimiento|a2|vida activa/i;
+const EXCLUDE_NAME_RX = /chocolat|saboriz|polvo|condensad|infantil|fermentad|caf[eé]|vegetal|soja|almendra|avena|dulce de leche|crema/i;
+
+const DEFAULT_SETTINGS = {
+  cotoWeekend: { 6: 15, 0: 15 },
+  club: { on: true, days: {}, scope: "all", stack: false },
+  excluded: ["TREGAR"],
+  tipos: { larga: true, sachet: true, special: false, entera: true, desc: true },
+};
+const isDesc = p => /descrem|liviana|semi|\b[012]\s*%/i.test(p.name) || /descrem/i.test(p.cat);
+const SEED_INSITU = [
+  { id: "seed-coto", date: "2026-11-22", store: "coto", productId: "sku00527739",
+    label: "Leche Entera Larga Vida Ilolay 1 L", shelf: 2799, promo: 2099.5, note: "2da unidad al 50%",
+    onlineShelf: 2799, onlinePromo: 2099.25 },
+  { id: "seed-dia", date: "2026-11-22", store: "dia", productId: "608",
+    label: "Leche Entera DIA Larga Vida 3% 1 L", shelf: 2390, promo: null, note: "",
+    onlineShelf: 2390, onlinePromo: null },
+];
+
+// ---------- Estado / storage ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("superscrap:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("superscrap:" + k, JSON.stringify(v)); } catch {} },
+};
+let S = Object.assign(structuredClone(DEFAULT_SETTINGS), store.get("settings", {}));
+let products = store.get("products", []);
+let fetchedAt = store.get("fetchedAt", null);
+let insitu = store.get("insitu", null) || structuredClone(SEED_INSITU);
+const todayIdx = (() => {
+  const s = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(new Date());
+  return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(s);
+})();
+const todayISO = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
+let selDay = todayIdx;
+
+const saveSettings = () => store.set("settings", S);
+
+// ---------- Utilidades ----------
+const $ = id => document.getElementById(id);
+const fmt = n => n == null || isNaN(n) ? "—" : "$" + n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const numAR = s => parseFloat(String(s).replace(/\./g, "").replace(",", "."));
+function parseLiters(name) {
+  const m = name.match(/(\d+(?:[.,]\d+)?)\s*(ml|cc|ltr|lts|lt|litros?|l)(?![a-z])/i);
+  if (!m) return null;
+  const v = parseFloat(m[1].replace(",", "."));
+  return /ml|cc/i.test(m[2]) ? v / 1000 : v;
+}
+
+// ---------- Fetch con estrategia de CORS ----------
+let localServer = null;
+async function hasLocalServer() {
+  if (localServer !== null) return localServer;
+  if (!location.protocol.startsWith("http")) return (localServer = false);
+  try { const r = await fetch("/ping", { cache: "no-store" }); localServer = r.ok && (await r.text()) === "superscrap"; }
+  catch { localServer = false; }
+  return localServer;
+}
+// Orden: servidor local (PC) → directo (Coto lo permite) → copia diaria de GitHub (data/*.json) → proxies públicos
+let snapUsed = {};
+async function snapshotMeta() {
+  try { const r = await fetch("data/meta.json", { cache: "no-store" }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+async function getJSON(url, snapKey, storeName) {
+  const tries = [];
+  if (await hasLocalServer()) tries.push({ u: "/proxy?url=" + encodeURIComponent(url) });
+  tries.push({ u: url });
+  if (snapKey && location.protocol.startsWith("http")) tries.push({ u: "data/" + snapKey + ".json", snap: true });
+  PUBLIC_PROXIES.forEach(p => tries.push({ u: p(url) }));
+  let lastErr;
+  for (const t of tries) {
+    try {
+      const r = await fetch(t.u, { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (t.snap && storeName) snapUsed[storeName] = true;
+      return j;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("sin conexión");
+}
+
+// ---------- Parsers ----------
+function parseDiaTeaser(name, price) {
+  const t = name.trim(); let m;
+  if ((m = t.match(/llevando\s*(\d+)\s*a\s*\$\s*([\d.,]+)/i))) return { qty: +m[1], unit: numAR(m[2]), text: t };
+  if ((m = t.match(/(\d)\s*x\s*(\d)/i))) { const a = +m[1], b = +m[2]; return { qty: a, unit: price * b / a, text: t }; }
+  if ((m = t.match(/(\d)\s*(?:do|da|°|º)?\s*(?:unidad|u\.?)?\s*al\s*(\d+)\s*%/i))) {
+    const q = +m[1], p = +m[2]; return { qty: q, unit: price * (q - p / 100) / q, text: t };
+  }
+  if ((m = t.match(/(\d+)\s*%/))) return { qty: 1, unit: price * (1 - m[1] / 100), text: t };
+  return null;
+}
+function normDia(p) {
+  const it = p.items?.[0]; const o = it?.sellers?.[0]?.commertialOffer;
+  if (!o || !o.Price || !o.IsAvailable) return null;
+  const name = p.productName;
+  const promos = (o.Teasers || []).map(t => parseDiaTeaser(t["<Name>k__BackingField"] || t.Name || "", o.Price)).filter(x => x && x.unit > 0);
+  return {
+    store: "dia", id: String(p.productId), name, brand: (p.brand || "").toUpperCase(),
+    url: p.link, img: it.images?.[0]?.imageUrl || "",
+    liters: parseLiters(name) || 1,
+    shelf: o.Price, list: Math.max(o.ListPrice || 0, o.Price),
+    promos, hasPromo: promos.length > 0 || o.ListPrice > o.Price,
+    tipo: /sachet|fresca/i.test(name) ? "sachet" : "larga",
+    cat: (p.categories?.[0] || ""),
+  };
+}
+function cotoRecords(j) {
+  let recs = null;
+  (function w(o) {
+    if (recs) return;
+    if (Array.isArray(o)) o.forEach(w);
+    else if (o && typeof o === "object") {
+      if (o.records && o["@type"] && Array.isArray(o.records)) { recs = o.records; return; }
+      for (const k in o) w(o[k]);
+    }
+  })(j);
+  return recs || [];
+}
+function normCoto(r) {
+  const a = r.records?.[0]?.attributes; if (!a) return null;
+  const g = k => (a[k] || [])[0];
+  const cat = g("product.category") || "";
+  if (!/^Leches (Enteras|Descremadas|Reducidas)/i.test(cat)) return null;
+  const name = g("sku.displayName") || g("product.displayName");
+  const shelf = parseFloat(g("sku.activePrice"));
+  if (!shelf) return null;
+  let promos = [];
+  try {
+    promos = JSON.parse(g("product.dtoDescuentos") || "[]").map(d => {
+      const unit = parseFloat(d.precioDesc);
+      const q = (String(d.textoLlevando || "").match(/(\d+)/) || [])[1];
+      return { qty: q ? +q : 1, unit, text: (d.textoDescuento || "").trim() + (q ? " llevando " + q : "") };
+    }).filter(x => x.unit > 0 && x.unit < shelf);
+  } catch {}
+  let list = shelf;
+  try { const dp = JSON.parse(g("sku.dtoPrice") || "{}"); if (dp.precioLista > shelf) list = dp.precioLista; } catch {}
+  const rs = r.detailsAction?.recordState || "";
+  return {
+    store: "coto", id: g("sku.repositoryId") || name, name, brand: (g("product.brand") || "").toUpperCase(),
+    url: "https://www.cotodigital.com.ar/sitios/cdigi/productos" + rs.replace(/\?.*$/, ""),
+    img: g("product.mediumImage.url") || "",
+    liters: parseLiters(name) || 1,
+    shelf, list, promos, hasPromo: promos.length > 0 || list > shelf,
+    tipo: /fresca/i.test(g("product.LCLASE") || "") || /sachet/i.test(name) ? "sachet" : "larga",
+    cat,
+  };
+}
+
+async function refresh() {
+  const btn = $("btnRefresh"); btn.disabled = true; setStatus("Consultando Dia y Coto…");
+  const errs = []; let dia = [], coto = [];
+  snapUsed = {};
+  await Promise.all([
+    (async () => {
+      try {
+        const lists = await Promise.all(SOURCES.dia.map((u, i) => getJSON(u, ["dia-enteras", "dia-descremadas"][i], "dia")));
+        const seen = new Set();
+        dia = lists.flat().map(normDia).filter(p => p && !seen.has(p.id) && seen.add(p.id));
+      } catch (e) { errs.push("Dia: " + e.message); }
+    })(),
+    (async () => {
+      try {
+        let recs = cotoRecords(await getJSON(SOURCES.coto, "coto", "coto"));
+        if (recs.length < 5) recs = cotoRecords(await getJSON(SOURCES.cotoFallback));
+        const seen = new Set();
+        coto = recs.map(normCoto).filter(p => p && !seen.has(p.id) && seen.add(p.id));
+      } catch (e) { errs.push("Coto: " + e.message); }
+    })(),
+  ]);
+  const old = products;
+  products = [
+    ...(dia.length ? dia : old.filter(p => p.store === "dia")),
+    ...(coto.length ? coto : old.filter(p => p.store === "coto")),
+  ];
+  if (dia.length || coto.length) {
+    fetchedAt = new Date().toISOString();
+    store.set("products", products); store.set("fetchedAt", fetchedAt);
+  }
+  btn.disabled = false;
+  const snapStores = Object.keys(snapUsed);
+  if (snapStores.length) {
+    const m = await snapshotMeta();
+    const when = m ? new Date(m.updated).toLocaleString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "?";
+    snapNote = snapStores.map(s => s === "coto" ? "Coto" : "Dia").join(" y ") + `: copia automática del ${when}`;
+  } else snapNote = "";
+  setStatus(errs.length ? "⚠ " + errs.join(" · ") + (products.length ? " (mostrando últimos datos guardados)" : "") : "", !!errs.length);
+  render();
+}
+let snapNote = "";
+function setStatus(msg, err) {
+  const el = $("status");
+  const when = fetchedAt ? "Precios de " + new Date(fetchedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : "";
+  el.textContent = msg || (when + (snapNote ? " · " + snapNote : "")); el.className = "status" + (err ? " err" : "");
+  if (msg && !err) return;
+  if (err && when) el.textContent += " · " + when;
+}
+
+// ---------- Precios según día ----------
+function clubPct(d) { return S.club.on ? (+S.club.days[d] || 0) : 0; }
+function priceFor(p, d) {
+  let one = p.shelf; const notes = [];
+  if (p.list > p.shelf) notes.push("oferta, antes " + fmt(p.list));
+  if (p.store === "coto") {
+    const w = +S.cotoWeekend[d] || 0;
+    p.promos.filter(x => x.qty <= 1).forEach(x => { if (x.unit < one) { one = x.unit; notes.push(x.text); } });
+    if (w && !p.hasPromo) { one = p.shelf * (1 - w / 100); notes.push(`−${w}% finde Coto`); }
+  } else {
+    const c = clubPct(d);
+    const applies = c && (S.club.scope === "all" || p.brand === "DIA");
+    if (applies) { one = p.shelf * (1 - c / 100); notes.push(`−${c}% Club Dia`); }
+  }
+  let best = one, bestNote = notes.join(" · "), bestQty = 1;
+  const c = p.store === "dia" && S.club.stack && clubPct(d) &&(S.club.scope === "all" || p.brand === "DIA") ? clubPct(d) : 0;
+  p.promos.forEach(x => {
+    const u = c ? x.unit * (1 - c / 100) : x.unit;
+    if (u < best) { best = u; bestQty = x.qty; bestNote = x.text + (c ? ` + Club Dia −${c}%` : ""); }
+  });
+  return { one, oneNote: notes.join(" · "), best, bestNote, bestQty, oneL: one / p.liters, bestL: best / p.liters };
+}
+function filtered() {
+  const ex = S.excluded.map(s => s.trim().toUpperCase()).filter(Boolean);
+  return products.filter(p => {
+    if (ex.some(b => p.brand.includes(b) || p.name.toUpperCase().includes(b))) return false;
+    if (EXCLUDE_NAME_RX.test(p.name)) return false;
+    if (!S.tipos.special && SPECIAL_RX.test(p.name)) return false;
+    if (p.tipo === "larga" && !S.tipos.larga) return false;
+    if (p.tipo === "sachet" && !S.tipos.sachet) return false;
+    if (isDesc(p) ? S.tipos.desc === false : S.tipos.entera === false) return false;
+    if (p.liters < 0.5 || p.liters > 2) return false;
+    return true;
+  });
+}
+
+// ---------- Render ----------
+function render() {
+  setStatus($("status").className.includes("err") ? $("status").textContent : "");
+  renderDays();
+  const list = filtered().map(p => ({ p, x: priceFor(p, selDay) }));
+  const by = (store, key) => list.filter(e => e.p.store === store).sort((a, b) => a.x[key] - b.x[key]);
+  const top = { one: { coto: by("coto", "oneL").slice(0, 3), dia: by("dia", "oneL").slice(0, 3) },
+                best: { coto: by("coto", "bestL").slice(0, 3), dia: by("dia", "bestL").slice(0, 3) } };
+  renderRank($("rankOne"), top.one, "one");
+  renderRank($("rankPromo"), top.best, "best");
+  renderVerdicts(top);
+  renderAll(list);
+  renderInsitu();
+}
+function renderDays() {
+  $("days").innerHTML = [1,2,3,4,5,6,0].map(d =>
+    `<button class="day ${d === selDay ? "on" : ""} ${d === todayIdx ? "today" : ""}" data-d="${d}">${DAYS[d]}${d === todayIdx ? " (hoy)" : ""}</button>`).join("");
+  const w = +S.cotoWeekend[selDay] || 0, c = clubPct(selDay);
+  $("daynote").innerHTML =
+    `<span class="tag ${w ? "coto" : ""}">Coto: ${w ? `−${w}% en productos sin promo` : "sin descuento de fin de semana"}</span>` +
+    `<span class="tag ${c ? "dia" : ""}">Club Dia: ${S.club.on ? (c ? `−${c}% ${S.club.scope === "dia" ? "en marca DIA" : ""}` : "sin descuento este día") : "desactivado"}</span>` +
+    (selDay !== todayIdx ? `<span class="tag warn">Simulando ${DAYS_FULL[selDay]} con precios de hoy</span>` : "");
+}
+function itemHTML(e, i, mode, isWin) {
+  const { p, x } = e; const price = mode === "one" ? x.one : x.best;
+  const note = mode === "one" ? x.oneNote : (x.bestQty > 1 ? x.bestNote : x.oneNote);
+  const showShelf = price < p.shelf - 0.5;
+  return `<div class="item ${isWin ? "win" : ""}">
+    <div class="rank">${i + 1}</div>
+    ${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : "<div></div>"}
+    <div><div class="name"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a></div>
+      <div class="note">${esc(note) || "precio regular"}${p.liters !== 1 ? ` · ${fmt(mode === "one" ? x.oneL : x.bestL)}/L` : ""}</div></div>
+    <div class="p">${showShelf ? `<s>${fmt(p.shelf)}</s><br>` : ""}<b>${fmt(price)}</b>${mode === "best" && x.bestQty > 1 ? `<div class="note">c/u x${x.bestQty}</div>` : ""}</div>
+  </div>`;
+}
+function renderRank(el, t, mode) {
+  const key = mode === "one" ? "oneL" : "bestL";
+  const bestAll = Math.min(...[...t.coto, ...t.dia].map(e => e.x[key]));
+  el.innerHTML = ["coto", "dia"].map(s => `<div class="col">
+    <h4><span class="dot ${s}"></span>${s === "coto" ? "Coto" : "Dia"}</h4>
+    ${t[s].length ? t[s].map((e, i) => itemHTML(e, i, mode, e.x[key] === bestAll)).join("") : `<div class="empty">Sin datos. Tocá “Actualizar precios”.</div>`}
+  </div>`).join("");
+}
+function renderVerdicts(top) {
+  const card = (title, mode) => {
+    const key = mode === "one" ? "oneL" : "bestL", pk = mode === "one" ? "one" : "best";
+    const c = top[mode === "one" ? "one" : "best"].coto[0], d = top[mode === "one" ? "one" : "best"].dia[0];
+    if (!c && !d) return `<div class="verdict"><h3>${title}</h3><div class="empty">Sin datos todavía.</div></div>`;
+    const win = !d || (c && c.x[key] < d.x[key]) ? c : d, lose = win === c ? d : c;
+    const diff = lose ? lose.x[key] - win.x[key] : 0;
+    const qty = mode === "best" && win.x.bestQty > 1 ? ` <span class="tag">llevando ${win.x.bestQty}</span>` : "";
+    return `<div class="verdict ${win.p.store}">
+      <h3>${title}</h3>
+      <div class="store">${win.p.store === "coto" ? "Coto" : "Dia"}</div>
+      <div class="price">${fmt(win.x[pk])}${win.p.liters !== 1 ? ` <span class="sub">(${fmt(win.x[key])}/L)</span>` : ""}</div>
+      <div>${esc(win.p.name)}${qty}</div>
+      ${lose ? `<div class="vs">${diff < 0.5 ? "Empate con" : `${fmt(diff)} (${(diff / lose.x[key] * 100).toFixed(1)}%) más barato que`} lo mejor de ${lose.p.store === "coto" ? "Coto" : "Dia"}: ${esc(lose.p.name)} a ${fmt(lose.x[pk])}</div>` : ""}
+    </div>`;
+  };
+  $("verdicts").innerHTML = card("Comprando 1 unidad", "one") + card("Aprovechando promos", "best");
+}
+function renderAll(list) {
+  $("allCount").textContent = list.length;
+  const rows = list.slice().sort((a, b) => a.x.oneL - b.x.oneL).map(({ p, x }) => `<tr>
+    <td><span class="tag ${p.store}">${p.store === "coto" ? "Coto" : "Dia"}</span></td>
+    <td><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(p.name)}</a></td>
+    <td class="n">${fmt(p.shelf)}</td><td class="n">${fmt(x.one)}</td>
+    <td class="n">${x.best < x.one - 0.5 ? fmt(x.best) : "—"}</td>
+    <td>${esc(x.best < x.one - 0.5 ? x.bestNote : x.oneNote)}</td></tr>`).join("");
+  $("allTable").innerHTML = `<tr><th></th><th>Producto</th><th class="n">Web</th><th class="n">1 unidad (día)</th><th class="n">Con promo c/u</th><th>Detalle</th></tr>` + rows;
+}
+
+// ---------- Góndola vs online ----------
+function diffCell(a, b) {
+  if (a == null || b == null) return "—";
+  const d = a - b; if (Math.abs(d) < 1) return `<span class="tag good">igual</span>`;
+  return `<span class="${d > 0 ? "pos" : "neg"}">${d > 0 ? "+" : ""}${fmt(d)} (${(d / b * 100).toFixed(1)}%)</span>`;
+}
+function renderInsitu() {
+  const rows = insitu.slice().sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+    const now = products.find(p => p.store === e.store && p.id === e.productId);
+    const nowPromo = now ? Math.min(...now.promos.map(x => x.unit), Infinity) : null;
+    return `<tr>
+      <td>${e.date.split("-").reverse().join("/")}</td>
+      <td><span class="tag ${e.store}">${e.store === "coto" ? "Coto" : "Dia"}</span></td>
+      <td>${esc(e.label)}${e.note ? `<div class="sub">${esc(e.note)}</div>` : ""}</td>
+      <td class="n">${fmt(e.shelf)}${e.promo ? `<div class="sub">promo ${fmt(e.promo)}</div>` : ""}</td>
+      <td class="n">${fmt(e.onlineShelf)}${e.onlinePromo ? `<div class="sub">promo ${fmt(e.onlinePromo)}</div>` : ""}</td>
+      <td class="n">${diffCell(e.shelf, e.onlineShelf)}${e.promo && e.onlinePromo ? `<div class="sub">${diffCell(e.promo, e.onlinePromo)}</div>` : ""}</td>
+      <td class="n">${now ? fmt(now.shelf) + (isFinite(nowPromo) ? `<div class="sub">promo ${fmt(nowPromo)}</div>` : "") : "—"}</td>
+      <td><button class="del" data-del="${esc(e.id)}" title="Borrar">✕</button></td></tr>`;
+  }).join("");
+  $("insitu").innerHTML = `<tr><th>Fecha</th><th></th><th>Producto</th><th class="n">Góndola</th><th class="n">Web ese día</th><th class="n">Góndola − web</th><th class="n">Web hoy</th><th></th></tr>` +
+    (rows || `<tr><td colspan="8" class="empty">Sin registros.</td></tr>`);
+  fillProdSelect();
+}
+function fillProdSelect() {
+  const s = $("fStore").value, cur = $("fProd").value;
+  const opts = products.filter(p => p.store === s && !EXCLUDE_NAME_RX.test(p.name)).sort((a, b) => a.shelf - b.shelf);
+  $("fProd").innerHTML = opts.map(p => `<option value="${esc(p.id)}">${esc(p.name)} — ${fmt(p.shelf)}</option>`).join("") ||
+    `<option value="">(actualizá precios primero)</option>`;
+  if (opts.some(p => p.id === cur)) $("fProd").value = cur;
+}
+$("fStore").onchange = fillProdSelect;
+$("fAdd").onclick = () => {
+  const p = products.find(x => x.store === $("fStore").value && x.id === $("fProd").value);
+  const shelf = parseFloat($("fShelf").value);
+  if (!p || !shelf) { alert("Elegí un producto y cargá el precio de góndola."); return; }
+  const date = $("fDate").value || todayISO;
+  const promoNow = p.promos.length ? Math.min(...p.promos.map(x => x.unit)) : null;
+  const isToday = date === todayISO;
+  insitu.push({ id: "e" + Date.now(), date, store: p.store, productId: p.id, label: p.name, shelf,
+    promo: parseFloat($("fPromo").value) || null, note: $("fNote").value.trim(),
+    onlineShelf: isToday ? p.shelf : null, onlinePromo: isToday ? promoNow : null });
+  store.set("insitu", insitu);
+  $("fShelf").value = $("fPromo").value = $("fNote").value = "";
+  renderInsitu();
+};
+$("insitu").onclick = ev => {
+  const id = ev.target.dataset?.del; if (!id) return;
+  if (!confirm("¿Borrar este registro?")) return;
+  insitu = insitu.filter(e => e.id !== id); store.set("insitu", insitu); renderInsitu();
+};
+
+// ---------- Configuración ----------
+function bindSettings() {
+  $("cSat").value = S.cotoWeekend[6] ?? 0; $("cSun").value = S.cotoWeekend[0] ?? 0;
+  $("clubOn").checked = S.club.on; $("clubScope").value = S.club.scope; $("clubStack").checked = S.club.stack;
+  $("excl").value = S.excluded.join(", ");
+  $("tLarga").checked = S.tipos.larga; $("tSachet").checked = S.tipos.sachet; $("tSpecial").checked = S.tipos.special;
+  $("tEntera").checked = S.tipos.entera !== false; $("tDesc").checked = S.tipos.desc !== false;
+  $("clubDays").innerHTML = [1,2,3,4,5,6,0].map(d => `<label>${DAYS[d]}<input type="number" min="0" max="100" data-club="${d}" value="${S.club.days[d] || ""}" placeholder="0"></label>`).join("");
+  const upd = () => {
+    S.cotoWeekend = { 6: +$("cSat").value || 0, 0: +$("cSun").value || 0 };
+    S.club.on = $("clubOn").checked; S.club.scope = $("clubScope").value; S.club.stack = $("clubStack").checked;
+    S.club.days = {}; document.querySelectorAll("[data-club]").forEach(i => { if (+i.value) S.club.days[i.dataset.club] = +i.value; });
+    S.excluded = $("excl").value.split(",").map(s => s.trim()).filter(Boolean);
+    S.tipos = { larga: $("tLarga").checked, sachet: $("tSachet").checked, special: $("tSpecial").checked,
+                entera: $("tEntera").checked, desc: $("tDesc").checked };
+    saveSettings(); render();
+  };
+  document.querySelectorAll(".settings input, .settings select").forEach(i => i.addEventListener("change", upd));
+}
+$("days").onclick = ev => { const d = ev.target.dataset?.d; if (d == null) return; selDay = +d; render(); };
+$("btnRefresh").onclick = refresh;
+
+// ---------- Inicio ----------
+$("fDate").value = todayISO;
+bindSettings();
+render();
+refresh();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>

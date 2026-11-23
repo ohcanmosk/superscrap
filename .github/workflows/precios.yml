@@ -1,0 +1,27 @@
+name: Actualizar precios
+
+on:
+  schedule:
+    # 07:17 y 13:17 hora Argentina (UTC-3)
+    - cron: "17 10,16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scrape.js
+      - name: Guardar datos
+        run: |
+          git config user.name "superscrap-bot"
+          git config user.email "superscrap-bot@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "Precios $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
