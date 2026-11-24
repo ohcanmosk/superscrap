@@ -761,7 +761,8 @@ async function loadPromos() {
 // salvo que la promo del medio de pago diga "acumulable" (ej. Carrefour + Mercado Pago): se elige lo que más convenga.
 function priceFor(p, d) {
   const pago = pagoPara(p, d);
-  const k = pago ? 1 - pago.pct / 100 : 1, pagoTxt = pago ? `−${pago.pct}% ${medioLabel(pago)}` : "";
+  // Si la promo pide compra mínima, se avisa (acá no se sabe el total de la compra; en Listas sí se calcula).
+  const k = pago ? 1 - pago.pct / 100 : 1, pagoTxt = pago ? `−${pago.pct}% ${medioLabel(pago)}${pago.minimo ? ` (compra mín. ${fmt(pago.minimo)})` : ""}` : "";
   const suma = !!pago && pago.acumulable === true;
   const conPago = c => pago && (!c.promo || suma) ? { ...c, v: c.v * k, notes: [...c.notes, pagoTxt] } : c;
   const menor = cs => cs.reduce((m, c) => c.v < m.v - 0.005 ? c : m);
