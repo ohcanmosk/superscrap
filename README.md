@@ -30,7 +30,9 @@ La primera vez Windows puede preguntar si permite a Node en la red: aceptá "Red
 1. Creá un repo **público** en github.com (ej. `superscrap`) y subí todos los archivos de esta carpeta
    (incluida `.github/workflows/precios.yml` y `data/`).
 2. En el repo: *Settings → Pages → Source: Deploy from a branch → main / (root)*.
-3. *Actions → Actualizar precios → Run workflow* para probar. Después corre solo a las 7:17 y 13:17 (hora AR).
+3. *Actions → Actualizar precios → Run workflow* para probar. Después corre solo a las 7:17 y 13:17 (hora AR); el catálogo completo, solo a las 7:17.
+
+**Carga sobre los supermercados:** la web nunca consulta a los súper desde el navegador; solo lee lo que baja el robot (una cantidad fija de pedidos por día, con pausas), así no importa cuánta gente la use. En vivo solo con el servidor local (`iniciar.bat`), que no repite un mismo pedido dentro de 1 minuto.
 4. Abrí `https://TU-USUARIO.github.io/superscrap/` en el celular y en Chrome tocá ⋮ → *Agregar a pantalla principal*.
 
 En la versión web, Coto se consulta en vivo desde el celular. Dia no permite consultas directas desde el navegador,
@@ -46,7 +48,7 @@ La configuración se guarda por dispositivo (los de la PC no pasan al celular).
 
 ## Listas de compras
 
-Pestaña **🧾 Listas**: armás listas (se guardan en tu dispositivo) con lo que comprás: qué buscar (con `-palabra` para excluir), marca, tamaño o talle y cantidad. La app busca cada producto en el catálogo completo de Coto, Dia y Carrefour (lo baja el robot de GitHub 2 veces por día), elige el más conveniente en cada súper (o el que fijes) y te dice **a qué súper conviene ir** el día elegido, con el total de cada uno y el detalle, incluyendo promos y tus medios de pago.
+Pestaña **🧾 Listas**: armás listas (se guardan en tu dispositivo) con lo que comprás: qué buscar (con `-palabra` para excluir), marca, tamaño o talle y cantidad. La app busca cada producto en el catálogo completo de Coto, Dia y Carrefour (lo baja el robot de GitHub 1 vez por día), elige el más conveniente en cada súper (o el que fijes) y te dice **a qué súper conviene ir** el día elegido, con el total de cada uno y el detalle, incluyendo promos y tus medios de pago.
 
 ## Histórico
 

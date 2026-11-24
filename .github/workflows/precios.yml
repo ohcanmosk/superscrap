@@ -2,8 +2,9 @@ name: Actualizar precios
 
 on:
   schedule:
-    # 07:17 y 13:17 hora Argentina (UTC-3)
-    - cron: "17 10,16 * * *"
+    # 07:17 y 13:17 hora Argentina (UTC-3). El catálogo completo solo en la de las 07:17 (ver abajo).
+    - cron: "17 10 * * *"
+    - cron: "17 16 * * *"
   workflow_dispatch:
 
 permissions:
@@ -26,9 +27,11 @@ jobs:
           git diff --cached --quiet || git commit -m "Precios $(date -u +%Y-%m-%dT%H:%MZ)"
           git push
       # Catálogo completo de supermercado (búsqueda libre en la web y listas de compras).
+      # Una vez por día (corrida de las 07:17, o a mano), para no cargar a los súper.
       # Va a la rama "catalogo", que se pisa en cada corrida (sin historial) para que el repo no crezca.
       # Si un súper falla, catalogo.js deja su archivo anterior (por eso se parte de la rama actual).
       - name: Catálogo completo
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 10 * * *'
         continue-on-error: true
         run: |
           DIR="$RUNNER_TEMP/catalogo"

@@ -28,7 +28,7 @@ Pestañas (categorías fijas, definidas en `categorias.js`):
 | `logos/` | Logos de billeteras/bancos (PNG chicos con fondo blanco, sacados de coto.com.ar). Los referencia `MEDIOS[k].logo` en `comun.js`. |
 | `catalogo.js` | Baja el catálogo de supermercado completo de los 3 súper (~33.000 productos, ~1,4 MB comprimido) a `catalogo/<súper>.json` + `meta.json`, formato compacto `[id, sku, nombre, marca, precio, lista, promos, categoría, url]`. GitHub Actions lo sube a la rama **`catalogo`** (force push, sin historial). |
 | `listas.js` | Catálogo en el navegador (`cargarCatalogo`, Cache Storage, se renueva cuando cambia `meta.json`; `buscarEnCatalogo`) y la pestaña 🧾 Listas. Se carga antes del script principal y usa sus funciones (`priceFor`, `pagosDe`, `cuponesDe`, `searchConf`…). |
-| `scrape.js` | Lo corre GitHub Actions (`.github/workflows/precios.yml`, 7:17 y 13:17 AR). Baja todas las categorías y guarda versiones recortadas en `data/*.json` + `data/meta.json` + `data/dia-stock.json` (stock de las tiendas Dia de la zona). |
+| `scrape.js` | Lo corre GitHub Actions (`.github/workflows/precios.yml`, 7:17 y 13:17 AR; el catálogo completo solo a las 7:17). Baja todas las categorías y guarda versiones recortadas en `data/*.json` + `data/meta.json` + `data/dia-stock.json` (stock de las tiendas Dia de la zona). |
 | `server.js` | Servidor local Node 18+ sin dependencias (`iniciar.bat`, puerto 8787). Sirve estáticos y hace de proxy `/proxy?url=` (solo hosts de Dia/Coto/Carrefour) porque Dia y Carrefour no permiten CORS. Único POST permitido: la simulación de compra de Dia (`POST_PATHS`). `/ping` responde `superscrap`. |
 | `sw.js` | Service worker: network-first con caché (`superscrap-vN`); pide con `cache: "no-cache"` para que GitHub Pages (que deja guardar 10 min) no sirva versiones viejas, y al activarse no borra la caché del catálogo (`superscrap-catalogo`). **Subí la versión de `CACHE`** si cambiás archivos del shell, y agregá archivos nuevos a `SHELL`. |
 | `data/` | Snapshots generados por `scrape.js` (commiteados por el bot). No editar a mano. |
@@ -44,9 +44,10 @@ No hay tests ni linter. Para verificar: `node --check` sobre `categorias.js`/`sc
 
 ## Flujo de datos
 
-1. **Orden de fuentes** (`getJSON` en `index.html`): servidor local `/proxy` → directo (Coto permite CORS, Dia no) → snapshot `data/<snap>.json` (solo categorías fijas, solo si la página se sirve por http). Cada intento tiene timeout (`FETCH_TIMEOUT`).
+0. **Carga sobre los súper (importante):** el navegador **nunca** consulta directo a Coto/Dia/Carrefour. Sin servidor local (la web, cualquier cantidad de usuarios) solo se leen los datos del robot (`data/*.json`, catálogo); así la carga sobre los súper es fija (la del robot) y no crece con los usuarios. En vivo solo con `server.js` (uso personal), que además responde con una copia si el mismo pedido se repite dentro de 1 minuto (`CACHE_MS`). El robot es "tranquilo": catálogo con `PARALELO = 3`, `PAUSA_MS = 300`, espera larga ante 429, y 1 vez por día.
+1. **Orden de fuentes** (`getJSON` en `index.html`): servidor local `/proxy` → snapshot `data/<snap>.json` (solo categorías fijas, solo si la página se sirve por http). Cada intento tiene timeout (`FETCH_TIMEOUT`).
    - Si la página se abre con doble clic (`file://`), se busca el servidor en `LOCAL_SERVER` (`http://localhost:8787`); por eso `server.js` responde `/proxy` y `/ping` con `access-control-allow-origin: *`.
-   - **No hay proxies públicos**: allorigins y corsproxy.io dejaron de andar (nov 2026: timeout / piden API key) y los alternativos probados (codetabs, thingproxy, cors.eu.org, cors-anywhere…) también fallan. Sin servidor local, Dia solo sale de los snapshots y la búsqueda libre no puede traer Dia.
+   - **No hay proxies públicos**: allorigins y corsproxy.io dejaron de andar (nov 2026: timeout / piden API key) y los alternativos probados (codetabs, thingproxy, cors.eu.org, cors-anywhere…) también fallan. Sin servidor local todo sale de los datos del robot.
    - Coto bloquea a Chrome headless por user-agent: al probar con `--headless`, pasá `--user-agent` de un Chrome normal.
 2. **Dia**: API VTEX pública `diaonline.supermercadosdia.com.ar/api/catalog_system/pub/products/search` — por categoría (`/frescos/leches/...?map=c,c,c`) o por texto (`?ft=...`), máx. 50 resultados (`_from=0&_to=49`), `O=OrderByPriceASC`. Promos en `commertialOffer.Teasers` ("Llevando 2 a $X", "2do al 70%", "3x2", "%") → `parseDiaTeaser`.
 3. **Coto**: JSON Endeca `www.coto.com.ar/sitios/cdigi/categoria/...?format=json` — por categoría (`/_/N-xxxx`) o por texto (`?Ntt=...`). Los productos están anidados: `cotoRecords` busca el primer objeto con `@type` y `records`. Precio en `sku.activePrice`, promos en `product.dtoDescuentos` (JSON string, `precioDesc` = precio por unidad con promo).
@@ -96,7 +97,7 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 
 - `catalogo.js`: Dia y Carrefour por categoría hoja del árbol VTEX (`/category/tree/3`, de a 50, máx. 2500 por categoría, 6 en paralelo, reintentos con espera); Coto por categoría Endeca de a 1000 (`Nrpp=1000&No=`). Solo categorías de supermercado (`SUPER[*].rx`). Solo productos con precio y disponibles (`vtexOffer`/`cotoOffer`).
 - Se lee de `CATALOGO_URL` (raw.githubusercontent.com, permite CORS). Con el servidor local, si existe `./catalogo/` (gitignored, `node catalogo.js`) se usa esa.
-- La búsqueda libre sin servidor local (web/celular) usa el catálogo para Dia y Carrefour (Coto sigue en vivo).
+- La búsqueda libre sin servidor local (web/celular) usa el catálogo para los 3 súper (no se consulta a los súper desde el navegador).
 - Precios de hasta ~12 h; sin stock por local.
 
 ## Listas de compras
@@ -112,7 +113,7 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 - Se manda a Dia y Carrefour (`ft=`) y Coto (`Ntt=`) lo que escribió el usuario, sin las palabras con `-`.
 - Después se filtra: el nombre tiene que contener **todas** las palabras (plural simple: "milanesas" → "milanesa").
 - **Quitar palabras**: campo aparte ("Quitar palabras") o `-palabra` en la búsqueda (ej. `cafe cabrales -torrado`). Las `-palabras` se mueven a la lista `qExcl` (chips con ✕). Todo producto cuyo nombre tenga alguna queda fuera del análisis (rankings, veredicto y tabla), y se muestra cuántos se quitaron. Agregar o sacar palabras quitadas **no** vuelve a consultar a Dia/Coto: solo re-filtra lo que ya está cargado.
-- No tiene snapshot en `data/`, así que en GitHub Pages los resultados de Dia dependen de los proxies públicos (pueden fallar). Con `server.js` funciona siempre.
+- No tiene snapshot en `data/`: en GitHub Pages sale del catálogo completo (de hasta 1 día). Con `server.js` es en vivo.
 
 ## Agregar una categoría fija
 

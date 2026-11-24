@@ -501,11 +501,13 @@ let snapUsed = {};
 async function snapshotMeta() {
   try { const r = await fetchT("data/meta.json"); return r.ok ? await r.json() : null; } catch { return null; }
 }
+// Para no cargar a los súper, el navegador NUNCA les consulta directo: con el servidor local (uso personal)
+// se consulta en vivo a través de él; sin servidor (la web, cualquier cantidad de usuarios) solo se leen
+// los datos que baja el robot de GitHub (data/*.json y el catálogo). Así la carga sobre los súper es fija.
 async function getJSON(url, snapKey, storeName) {
   const tries = [];
   const base = await localServerBase();
   if (base != null) tries.push({ u: base + "/proxy?url=" + encodeURIComponent(url) });
-  tries.push({ u: url });
   if (snapKey && location.protocol.startsWith("http")) tries.push({ u: "data/" + snapKey + ".json", snap: true });
   let lastErr;
   for (const t of tries) {
@@ -517,10 +519,8 @@ async function getJSON(url, snapKey, storeName) {
       return j;
     } catch (e) { lastErr = e.name === "AbortError" ? new Error("no respondió a tiempo") : e; }
   }
-  // Sin servidor local, Dia no se puede consultar desde el navegador (no permite CORS).
-  if (base == null) throw new Error(cat === SEARCH || !snapKey
-    ? "no se puede consultar sin el servidor local (ejecutá iniciar.bat y abrí " + LOCAL_SERVER + ")"
-    : "no se pudo consultar; ejecutá iniciar.bat y abrí " + LOCAL_SERVER);
+  if (base == null) throw new Error(!snapKey ? "sin datos guardados (en vivo solo con el servidor local: iniciar.bat)"
+    : "no se pudieron leer los datos guardados");
   throw lastErr || new Error("sin conexión");
 }
 
@@ -657,15 +657,15 @@ async function refresh() {
   const snap = c.snap || {};
   snapUsed = {};
   const dedupe = list => { const seen = new Set(); return list.filter(p => p && !seen.has(p.id) && seen.add(p.id)); };
-  // En la búsqueda libre sin servidor local (web / celular) Dia y Carrefour no se pueden consultar en vivo: se usa el catálogo.
+  // Búsqueda libre sin servidor local (web / celular): los 3 súper salen del catálogo que baja el robot
+  // (no se consulta a los súper desde el navegador).
   const conCatalogo = myCat === SEARCH && (await localServerBase()) == null;
   const catUsado = [];
-  await Promise.all([
+  if (conCatalogo) await Promise.all(STORES.map(async s => {
+    try { got[s] = await buscarEnCatalogo(s, c); catUsado.push(s); } catch (e) { errs.push(storeName(s) + ": " + e.message); }
+  }));
+  else await Promise.all([
     ...["dia", "carrefour"].map(s => (async () => {
-      if (conCatalogo) {
-        try { got[s] = await buscarEnCatalogo(s, c); catUsado.push(s); } catch (e) { errs.push(storeName(s) + ": " + e.message); }
-        return;
-      }
       try {
         const lists = await Promise.all((c[s] || []).map((u, i) => getJSON(u, snap[s]?.[i], s)));
         got[s] = dedupe(lists.flat().map(p => normVtex(p, s)));
@@ -674,7 +674,7 @@ async function refresh() {
     (async () => {
       try {
         let recs = cotoRecords(await getJSON(c.coto, snap.coto, "coto"));
-        if (recs.length < 5 && c.cotoFallback) recs = cotoRecords(await getJSON(c.cotoFallback));
+        if (recs.length < 5 && c.cotoFallback) { try { recs = cotoRecords(await getJSON(c.cotoFallback)); } catch {} }
         got.coto = dedupe(recs.map(normCoto));
       } catch (e) { errs.push("Coto: " + e.message); }
     })(),

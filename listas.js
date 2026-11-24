@@ -209,7 +209,7 @@ function renderListas() {
     $("lItems").innerHTML = ""; return;
   }
   const cuando = catalogoFecha();
-  $("lInfo").textContent = `Precios del catálogo del ${cuando || "?"} (se actualiza 2 veces por día)` +
+  $("lInfo").textContent = `Precios del catálogo del ${cuando || "?"} (se actualiza 1 vez por día)` +
     (STORES.some(s => !catalogo[s]) ? " · sin datos de " + STORES.filter(s => !catalogo[s]).map(storeName).join(", ") : "");
   // Ítems: qué eligió en cada súper (se puede cambiar)
   // Minimizados: nombre, cantidad y el precio en cada súper (el más barato en verde). Los más nuevos arriba.

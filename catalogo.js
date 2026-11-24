@@ -1,6 +1,6 @@
 // SuperScrap - catálogo completo de supermercado de Coto, Dia y Carrefour, en formato compacto.
 // Lo usan la búsqueda libre (en la web, donde Dia y Carrefour no se pueden consultar en vivo) y las listas de compras.
-// GitHub Actions lo corre después de scrape.js y lo sube a la rama "catalogo" (pisándola, sin historial);
+// GitHub Actions lo corre 1 vez por día (corrida de las 7:17) y lo sube a la rama "catalogo" (pisándola, sin historial);
 // la app lo lee de raw.githubusercontent.com (CATALOGO_URL en categorias.js).
 //
 // Uso: node catalogo.js [carpeta]   (por defecto ./catalogo). Si un súper falla, se deja su archivo anterior.
@@ -24,17 +24,23 @@ const SUPER = {
   coto: { rx: /^(almac|bebidas|frescos|congelados|limpieza|perfumer)/i },
 };
 
+// Para no cargar a los súper: pocos pedidos a la vez (PARALELO), una pausa después de cada uno (PAUSA_MS)
+// y, si responden "demasiados pedidos" (429) o fallan, se espera bastante antes de reintentar.
+const PARALELO = 3, PAUSA_MS = 300;
+const dormir = ms => new Promise(res => setTimeout(res, ms));
 async function getJSON(url, intentos = 4) {
   for (let i = 0; ; i++) {
     try {
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 45000);
       const r = await fetch(url, { headers: UA, signal: ctl.signal }).finally(() => clearTimeout(t));
-      if (r.status === 429 || r.status >= 500) throw new Error("HTTP " + r.status);
+      if (r.status === 429 || r.status >= 500) throw Object.assign(new Error("HTTP " + r.status), { status: r.status });
       if (!r.ok) throw Object.assign(new Error("HTTP " + r.status), { fatal: true });
-      return await r.json();
+      const j = await r.json();
+      await dormir(PAUSA_MS);
+      return j;
     } catch (e) {
       if (e.fatal || i >= intentos - 1) throw e;
-      await new Promise(res => setTimeout(res, 1500 * (i + 1) ** 2));
+      await dormir((e.status === 429 ? 15000 : 3000) * (i + 1));
     }
   }
 }
@@ -66,7 +72,7 @@ async function catalogoVtex(store) {
       }
       if (j.length < 50) break;
     }
-  }), 6);
+  }), PARALELO);
   return [...prods.values()];
 }
 

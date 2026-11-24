@@ -20,6 +20,11 @@ const POST_PATHS = new Set([
   "diaonline.supermercadosdia.com.ar/api/checkout/pub/orderForms/simulation",
   "www.carrefour.com.ar/api/checkout/pub/orderForms/simulation",
 ]);
+// Para no cargar a los súper: el mismo pedido (URL + cuerpo) dentro de 1 minuto se responde con la copia
+// guardada, y si ya hay uno igual en curso se espera ese en vez de hacer otro.
+const CACHE_MS = 60 * 1000;
+const cache = new Map(); // clave → { t, status, type, body } o { p: promesa en curso }
+function limpiarCache() { const t = Date.now(); for (const [k, v] of cache) if (v.t && t - v.t > CACHE_MS) cache.delete(k); }
 const readBody = req => new Promise((ok, fail) => {
   const parts = []; let n = 0;
   req.on("data", c => { n += c.length; if (n > 1e6) { fail(new Error("pedido muy grande")); req.destroy(); } else parts.push(c); });
@@ -45,19 +50,26 @@ const server = http.createServer(async (req, res) => {
       return res.end("URL no permitida");
     }
     try {
-      const r = await fetch(target, {
-        method: isPost ? "POST" : "GET",
-        body: isPost ? await readBody(req) : undefined,
-        headers: { "user-agent": "Mozilla/5.0 (SuperScrap)", accept: "application/json",
-          ...(isPost ? { "content-type": "application/json" } : {}) },
-        redirect: "follow",
-      });
-      const body = Buffer.from(await r.arrayBuffer());
-      res.writeHead(r.status, {
-        "content-type": r.headers.get("content-type") || "application/json",
-        "cache-control": "no-store",
-      });
-      return res.end(body);
+      const reqBody = isPost ? await readBody(req) : undefined;
+      const key = req.method + " " + target.href + " " + (reqBody ? reqBody.toString("base64") : "");
+      limpiarCache();
+      let c = cache.get(key);
+      if (!c) {
+        const p = (async () => {
+          const r = await fetch(target, {
+            method: isPost ? "POST" : "GET", body: reqBody,
+            headers: { "user-agent": "Mozilla/5.0 (SuperScrap)", accept: "application/json",
+              ...(isPost ? { "content-type": "application/json" } : {}) },
+            redirect: "follow",
+          });
+          return { t: Date.now(), status: r.status, type: r.headers.get("content-type") || "application/json", body: Buffer.from(await r.arrayBuffer()) };
+        })();
+        cache.set(key, { p });
+        try { c = await p; } catch (e) { cache.delete(key); throw e; }
+        if (c.status === 200) cache.set(key, c); else cache.delete(key);
+      } else if (c.p) c = await c.p;
+      res.writeHead(c.status, { "content-type": c.type, "cache-control": "no-store" });
+      return res.end(c.body);
     } catch (e) {
       res.writeHead(502, { "content-type": "text/plain" });
       return res.end("Error al consultar: " + e.message);
