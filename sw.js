@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla sin conexión (con los últimos datos guardados).
 // La página y data/*.json se piden primero a la red; si no hay red, se usa la copia en caché.
-const CACHE = "superscrap-v26";
+const CACHE = "superscrap-v27";
 const SHELL = ["./", "index.html", "historico.html", "categorias.js", "comun.js", "listas.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {

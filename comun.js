@@ -11,7 +11,8 @@
   function parseSize(name) {
     const n = norm(name);
     const m = n.match(/(\d+(?:[.,]\d+)?)\s*(kgm|kgs?|kilos?|k|grm|grs?|gramos?|g|ml|cc|ltr|lts?|litros?|l)(?![a-z])/);
-    if (!m) return null;
+    // Productos que se venden por kilo sin decir el peso ("Bola de lomo X KG", "x Kg.", "por kilo"): el precio es por 1 kg.
+    if (!m) return /(^|[^a-z0-9])(x|por)\s*(kgs?|kilos?)(?![a-z])/.test(n) ? { size: 1, unit: "kg" } : null;
     let v = parseFloat(m[1].replace(",", "."));
     if (!v) return null;
     const u = m[2];
