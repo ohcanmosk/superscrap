@@ -30,7 +30,7 @@ La primera vez Windows puede preguntar si permite a Node en la red: aceptá "Red
 1. Creá un repo **público** en github.com (ej. `superscrap`) y subí todos los archivos de esta carpeta
    (incluida `.github/workflows/precios.yml` y `data/`).
 2. En el repo: *Settings → Pages → Source: Deploy from a branch → main / (root)*.
-3. *Actions → Actualizar precios → Run workflow* para probar. Después corre solo a las 7:17 y 13:17 (hora AR); el catálogo completo, solo a las 7:17.
+3. *Actions → Actualizar precios → Run workflow* para probar. Después corre solo a las 00:25, 7:17 y 13:17 (hora AR); el catálogo completo, solo a las 7:17.
 
 **Carga sobre los supermercados:** la web nunca consulta a los súper desde el navegador; solo lee lo que baja el robot (una cantidad fija de pedidos por día, con pausas), así no importa cuánta gente la use. En vivo solo con el servidor local (`iniciar.bat`), que no repite un mismo pedido dentro de 1 minuto.
 4. Abrí `https://TU-USUARIO.github.io/superscrap/` en el celular y en Chrome tocá ⋮ → *Agregar a pantalla principal*.
@@ -57,7 +57,7 @@ Botón **📈 Histórico** (arriba a la derecha): página aparte con los último
 - **¿Qué día de la semana conviene?**: promedio por día de la semana de cada súper, sin promo y con promo, con el día más barato marcado.
 - **Un producto**: su precio día por día y qué promo tuvo cada día de la semana.
 
-Los datos los junta el robot de GitHub (2 veces por día) en `data/historial/`, así que el histórico crece solo una vez subido el proyecto.
+Los datos los junta el robot de GitHub (3 veces por día) en `data/historial/`, así que el histórico crece solo una vez subido el proyecto.
 
 ## Búsqueda libre
 

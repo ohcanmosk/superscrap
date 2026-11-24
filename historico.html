@@ -136,7 +136,7 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
     <div class="tablewrap" id="semProd"></div>
   </section>
 
-  <div class="sub">Son los precios publicados en la web de cada súper, guardados 2 veces por día (7:17 y 13:17) por el robot de GitHub.
+  <div class="sub">Son los precios publicados en la web de cada súper, guardados 3 veces por día (00:25, 7:17 y 13:17) por el robot de GitHub.
     No incluyen los descuentos con medios de pago (Mercado Pago, MODO, bancos), porque no son precios publicados del producto.</div>
 </div>
 
@@ -215,7 +215,7 @@ async function cargar() {
     H = null;
     aviso(location.protocol === "file:"
       ? "Abrí el histórico desde la app (iniciar.bat → http://localhost:8787) o desde GitHub Pages: con doble clic el navegador no deja leer los datos."
-      : "Todavía no hay histórico para esta categoría. Se empieza a juntar cuando el robot de GitHub corre con la versión nueva (2 veces por día).");
+      : "Todavía no hay histórico para esta categoría. Se empieza a juntar cuando el robot de GitHub corre con la versión nueva (3 veces por día).");
   }
   render();
 }
@@ -276,7 +276,7 @@ function render() {
   const pd = porDia(), dias_ = Object.keys(pd).sort();
   const VIS = storesVis();
   if (dias_.length < 7) aviso(`El histórico empezó el ${ddmm(H.tomas[0].d)}: hay ${dias_.length} día${dias_.length === 1 ? "" : "s"} con datos. ` +
-    "El robot de GitHub suma 2 tomas por día; para comparar días de la semana hace falta al menos 1 semana (mejor 3 o más).");
+    "El robot de GitHub suma 3 tomas por día; para comparar días de la semana hace falta al menos 1 semana (mejor 3 o más).");
   const mins = minimosPorSuper(pd);
   const nombre = k => H.productos[k]?.[0] || k;
 

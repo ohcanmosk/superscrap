@@ -2,7 +2,9 @@ name: Actualizar precios
 
 on:
   schedule:
-    # 07:17 y 13:17 hora Argentina (UTC-3). El catálogo completo solo en la de las 07:17 (ver abajo).
+    # 00:25, 07:17 y 13:17 hora Argentina (UTC-3). El catálogo completo solo en la de las 07:17 (ver abajo).
+    # La de las 00:25 toma los precios y promos del día nuevo apenas arranca.
+    - cron: "25 3 * * *"
     - cron: "17 10 * * *"
     - cron: "17 16 * * *"
   workflow_dispatch:
