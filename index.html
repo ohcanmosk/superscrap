@@ -469,7 +469,8 @@ function searchConf(q, excl = []) {
   const pos = norm(sq.pos).split(/\s+/).filter(Boolean).map(stem);
   const neg = [...sq.neg, ...excl].map(w => stem(norm(w))).filter(Boolean);
   // A Dia/Coto se les manda solo lo que se busca; las palabras quitadas y el plural se usan para filtrar acá.
-  const sent = sq.pos;
+  // Se manda sin tildes (los súper hoy las ignoran, pero así no depende de ellos): "higiénico" = "higienico".
+  const sent = sq.pos.normalize("NFD").replace(/[̀-ͯ]/g, "");
   return {
     label: "Búsqueda", emoji: "🔎", unit: null, ...buscar(sent),
     include: pos.map(w => new RegExp(escRx(w))),
