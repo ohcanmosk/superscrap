@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-23T22:02:09.081Z",
+  "updated": "2026-11-24T13:57:19.504Z",
   "ok": {
     "dia-enteras": 16,
     "dia-descremadas": 18,
@@ -25,7 +25,7 @@
     "papeldoble-carrefour-2": 50,
     "dia-stock": 88,
     "carrefour-stock": 315,
-    "promos": 111
+    "promos": 113
   },
   "errors": {}
 }
