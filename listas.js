@@ -71,6 +71,8 @@ function catalogoFecha() {
 // ---------- Listas de compras (se guardan en este dispositivo) ----------
 // listas = [{ id, nombre, items: [{ id, q, marca, tam, cant, fijos: { <súper>: <id producto> } }] }]
 let listas = [], listaSel = null;
+// Ítems desplegados (el último que se agregó queda abierto; el resto minimizados en una línea).
+let abiertos = new Set();
 const guardarListas = () => { store.set("listas", listas); store.set("listaSel", listaSel); };
 const listaActual = () => listas.find(l => l.id === listaSel) || null;
 const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -206,11 +208,17 @@ function renderListas() {
   $("lInfo").textContent = `Precios del catálogo del ${cuando || "?"} (se actualiza 2 veces por día)` +
     (STORES.some(s => !catalogo[s]) ? " · sin datos de " + STORES.filter(s => !catalogo[s]).map(storeName).join(", ") : "");
   // Ítems: qué eligió en cada súper (se puede cambiar)
+  // Minimizados: nombre, cantidad y el precio en cada súper (el más barato en verde). Los más nuevos arriba.
   $("lItems").innerHTML = !l ? `<div class="empty">Creá una lista con “+ Nueva”.</div>` : !l.items.length ? `<div class="empty">Agregá productos con el formulario de arriba.</div>` :
-    l.items.map(it => `<div class="litem">
-      <div class="lihead"><span class="lq">${esc(itemTexto(it))}</span>
-        <label class="lcant">× <input type="number" min="1" max="99" value="${it.cant || 1}" data-cant="${esc(it.id)}"></label>
-        <button class="del" data-delit="${esc(it.id)}" title="Sacar de la lista">✕</button></div>
+    l.items.slice().reverse().map(it => {
+      const precios = STORES.filter(s => catalogo[s]).map(s => ({ s, e: elegido(it, s) }));
+      const min = Math.min(...precios.filter(x => x.e).map(x => x.e.c.v));
+      const mini = precios.map(({ s, e }) => `<span class="mp ${e && e.c.v === min ? "low" : ""}"><span class="dot ${s}"></span>${e ? fmt(e.c.v) : "—"}</span>`).join("");
+      return `<details class="litem" data-item="${esc(it.id)}" ${abiertos.has(it.id) ? "open" : ""}>
+      <summary class="lihead"><span class="lq">${esc(itemTexto(it))}${(it.cant || 1) > 1 ? ` <span class="sub">×${it.cant}</span>` : ""}</span><span class="lmini">${mini}</span></summary>
+      <div class="libody">
+      <div class="lirow"><label class="lcant">Cantidad <input type="number" min="1" max="99" value="${it.cant || 1}" data-cant="${esc(it.id)}"></label>
+        <button class="del" data-delit="${esc(it.id)}" title="Sacar de la lista">✕ Sacar</button></div>
       ${STORES.filter(s => catalogo[s]).map(s => {
         const cs = candidatos(it, s), e = elegido(it, s);
         if (!e) return `<div class="lcand"><span class="dot ${s}"></span><span class="sub">${storeName(s)}: no se encontró</span></div>`;
@@ -221,7 +229,8 @@ function renderListas() {
           </select><b class="lprecio">${fmt(e.c.v)}</b></div>` +
           (!e.fijo ? `<div class="lauto sub">${esc(e.p.name)}${e.fijoPerdido ? " (el que habías elegido ya no está)" : ""}</div>` : "");
       }).join("")}
-    </div>`).join("");
+      </div></details>`;
+    }).join("");
   // Resultado: a qué súper conviene ir
   if (!l || !l.items.length) { $("lRes").innerHTML = ""; return; }
   const res = STORES.filter(s => catalogo[s]).map(s => totalSuper(s, l, selDay))
@@ -265,11 +274,18 @@ function initListas() {
     ev.preventDefault();
     const q = $("lQ").value.trim(); if (!q) return;
     const l = listaActual() || nueva("Mi lista");
-    l.items.push({ id: nuevoId(), q, marca: $("lMarca").value.trim(), tam: $("lTam").value.trim(), cant: Math.max(1, +$("lCant").value || 1), fijos: {} });
+    const nuevo = { id: nuevoId(), q, marca: $("lMarca").value.trim(), tam: $("lTam").value.trim(), cant: Math.max(1, +$("lCant").value || 1), fijos: {} };
+    l.items.push(nuevo);
+    abiertos = new Set([nuevo.id]); // el nuevo abierto, los anteriores minimizados
     guardarListas();
     $("lQ").value = $("lMarca").value = $("lTam").value = ""; $("lCant").value = 1; $("lQ").focus();
     render();
   };
+  // Recordar qué ítems abrió o cerró el usuario (para que no se cierren al recalcular).
+  $("lItems").addEventListener("toggle", ev => {
+    const id = ev.target.dataset?.item; if (!id) return;
+    if (ev.target.open) abiertos.add(id); else abiertos.delete(id);
+  }, true);
   $("lItems").addEventListener("click", ev => {
     const id = ev.target.dataset?.delit; if (!id) return;
     const l = listaActual(); l.items = l.items.filter(it => it.id !== id); guardarListas(); render();

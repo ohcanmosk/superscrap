@@ -102,6 +102,7 @@ Config en `ZONA` de `categorias.js`; el usuario marca tiendas en Configuración 
 ## Listas de compras
 
 - `listas` / `listaSel` en localStorage (solo en el dispositivo). Ítem = `{ q, marca, tam, cant, fijos: { <súper>: <id> } }`. `q` acepta `-palabra`. `tam`: con número y unidad (500 g, 1 L) compara ese envase (±3%); si no (M, XG, blend) es una palabra que tiene que estar en el nombre (`parseTam`).
+- Ítems como `<details>`: minimizados en una línea (nombre, ×cant, precio en cada súper; el más barato en verde), los más nuevos arriba; el recién agregado queda abierto (`abiertos`).
 - `candidatos`: con tamaño, el más barato; sin tamaño, el más barato por kg/L. El usuario puede fijar un producto por súper (`fijos`).
 - `costoLinea`: promos por cantidad de a grupos (con 3 y "2da al 50%": 2 con promo + 1 normal). `totalSuper`: prueba cada medio de pago del día (y ninguno) y se queda con el menor total, respetando compra mínima (sobre el total), tope (`topeNum` del texto) y `soloSinOferta`; el medio de pago no se suma a promos del producto salvo `acumulable`. Después el cupón Club Dia (con exclusiones). Orden: primero los súper a los que no les falta nada, después por total.
 

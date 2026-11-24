@@ -150,9 +150,21 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .lform{display:grid;grid-template-columns:2fr 1fr 1fr 64px auto;gap:6px;margin:10px 0 4px}
 .lform input{padding:8px}
 @media (max-width:700px){.lform{grid-template-columns:1fr 1fr}.lform #lQ{grid-column:1/-1}}
-.litem{border-top:1px solid var(--line);padding:8px 0}
-.lihead{display:flex;gap:8px;align-items:center}
-.lq{flex:1;font-weight:600;font-size:14px;min-width:0}
+.litem{border-top:1px solid var(--line);padding:6px 0}
+.lihead{display:flex;gap:8px;align-items:center;cursor:pointer;list-style:none;padding:4px 0}
+.lihead::-webkit-details-marker{display:none}
+.lihead::before{content:"▸";color:var(--muted);font-size:12px;width:10px}
+.litem[open] .lihead::before{content:"▾"}
+.lq{flex:1;font-weight:600;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.litem[open] .lq{white-space:normal}
+.lmini{display:flex;gap:8px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+.lmini .mp{display:inline-flex;align-items:center;gap:3px}
+.lmini .dot{width:7px;height:7px}
+.lmini .low{color:var(--good);font-weight:700}
+.litem[open] .lmini{display:none}
+.libody{padding:2px 0 6px 18px}
+.lirow{display:flex;justify-content:space-between;align-items:center;margin:2px 0 4px;font-size:13px}
+@media (max-width:500px){.lmini{gap:5px;font-size:11px}.libody{padding-left:4px}}
 .lcant input{width:52px;padding:4px}
 .del{background:none;color:var(--muted);padding:2px 6px;font-weight:400}
 .lcand{display:flex;gap:6px;align-items:center;margin-top:4px;font-size:13px}
