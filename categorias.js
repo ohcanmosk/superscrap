@@ -27,6 +27,25 @@
   const cotoSearch = q => `${COTO}?Ntt=${encodeURIComponent(q)}&Nrpp=300&format=json`;
   const vtexCat = (base, p) => `${base}/api/catalog_system/pub/products/search/${p}?map=c,c,c&_from=0&_to=49&O=OrderByPriceASC`;
 
+  // Papel higiénico que no dice si es hoja simple o doble (ni es una línea conocida): lo clasifica el usuario.
+  // Papeles que no lo dicen en el nombre pero se averiguó (nov 2026): "<súper>:<id>" → simple | doble | triple.
+  // Fuentes: ficha técnica de Carrefour ("Tipo de Hoja"), el mismo producto (mismo EAN) en Carrefour o Easy.
+  const PAPEL_TIPO_CONOCIDO = {
+    "coto:sku00142475": "simple",  // Campanita 80 m x4: en Carrefour (mismo EAN) "hoja simple Campanita soft 4 x 80 m"
+    "coto:sku00632358": "simple",  // Felpita Superpack 24 x 30 m: en Easy (mismo EAN) "felpita-sh-24x30mts" (SH = simple hoja)
+    "coto:sku00518010": "doble",   // Felpita Pura Caricia: en Carrefour (mismo EAN) "Felpita doble hoja super suave"
+    "coto:sku00622846": "triple",  // Elite Soft & Strong: en Carrefour (mismo EAN) "triple hoja"
+    "carrefour:636240": "simple",  // Elegante 4 x 80 m (Tipo de Hoja: Simple)
+    "carrefour:686555": "simple",  // Elegante Megamax 120 m
+    "carrefour:783590": "simple",  // Vual x1 80 m
+    "carrefour:783589": "simple",  // Vual x1 50 m
+    "carrefour:621494": "simple",  // Campanita ecológico 4 x 30 m
+    "carrefour:643946": "doble",   // Felpita "doble textura" 4 x 20 m (Tipo de Hoja: Doble, "PAPEL HIGIENICO DH FELPITA PREMIUM")
+  };
+  const SIN_TIPO_PAPEL = {
+    include: [/papel|p\.\s*higien/, /higien/],
+    exclude: /simple|s\/h|doble hoja|hoja doble|d\/h|infinity|triple|porta|palito|humed|toallit|cocina|servillet/,
+  };
   const CATEGORIAS = {
     leche: {
       label: "Leches", tab: "Leches", emoji: "🥛", unit: "L", porDefecto: 1,
@@ -72,14 +91,17 @@
       snap: { dia: ["milasoja-dia"], coto: "milasoja-coto", carrefour: ["milasoja-carrefour"] },
     },
     // Papel higiénico: se compara el precio por metro (metros por rollo × rollos).
-    // Solo entran los que dicen en el nombre si son hoja simple o doble hoja ("S/H", "D/H" en Coto).
+    // Entran los que dicen en el nombre si son hoja simple o doble hoja ("S/H", "D/H" en Coto), y las líneas que
+    // se sabe que son doble hoja aunque el nombre no lo diga (Felpita Infinity: lo dice el paquete).
+    // Los que no aclaran (sinTipo) los clasifica el usuario en la app (Simple / Doble); ver papelTipo en index.html.
     papelsimple: {
       label: "Papel higiénico hoja simple", tab: "Papel simple", emoji: "🧻", unit: "m", medida: "metros",
       dia: [diaSearch("papel higienico")],
       coto: cotoSearch("papel higienico"),
       carrefour: [carSearch("papel higienico"), carSearch("papel higienico").replace("_from=0&_to=49", "_from=50&_to=99")],
       include: [/papel|p\.\s*higien/, /higien/, /simple|s\/h/],
-      exclude: /doble|d\/h|triple|porta|palito|humed|toallit|cocina|servillet/,
+      exclude: /doble|d\/h|infinity|triple|porta|palito|humed|toallit|cocina|servillet/,
+      tipoPapel: "simple", sinTipo: SIN_TIPO_PAPEL,
       snap: { dia: ["papelsimple-dia"], coto: "papelsimple-coto", carrefour: ["papelsimple-carrefour", "papelsimple-carrefour-2"] },
     },
     papeldoble: {
@@ -87,9 +109,10 @@
       dia: [diaSearch("papel higienico")],
       coto: cotoSearch("papel higienico"),
       carrefour: [carSearch("papel higienico"), carSearch("papel higienico").replace("_from=0&_to=49", "_from=50&_to=99")],
-      // "doble textura" (Felpita) no es doble hoja.
-      include: [/papel|p\.\s*higien/, /higien/, /doble hoja|hoja doble|d\/h/],
+      // "doble textura" no se toma como doble hoja por el nombre (Felpita 4x20 sí lo es: ver PAPEL_TIPO_CONOCIDO).
+      include: [/papel|p\.\s*higien/, /higien/, /doble hoja|hoja doble|d\/h|infinity/],
       exclude: /simple|s\/h|triple|textura|porta|palito|humed|toallit|cocina|servillet/,
+      tipoPapel: "doble", sinTipo: SIN_TIPO_PAPEL,
       snap: { dia: ["papeldoble-dia"], coto: "papeldoble-coto", carrefour: ["papeldoble-carrefour", "papeldoble-carrefour-2"] },
     },
   };
@@ -139,7 +162,7 @@
   // Catálogo completo de supermercado (lo genera catalogo.js; GitHub Actions lo sube a la rama "catalogo").
   // raw.githubusercontent.com permite CORS, así que se lee desde la web y el celular.
   const CATALOGO_URL = "https://raw.githubusercontent.com/ohcanmosk/superscrap/catalogo/";
-  const api = { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, CATALOGO_URL, buscar, diaSearch, cotoSearch, carSearch };
+  const api = { PAPEL_TIPO_CONOCIDO, CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, CATALOGO_URL, buscar, diaSearch, cotoSearch, carSearch };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapCats = api;
 })(this);

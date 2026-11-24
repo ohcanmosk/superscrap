@@ -144,6 +144,9 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
 .promo .legal{font-size:11px;color:var(--muted);max-height:200px;overflow:auto;margin-top:6px;white-space:pre-line}
 .promo .legal a{color:inherit}
 .tagbtn{cursor:pointer;border:0}
+.strow{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.strow .stn{flex:1;min-width:0}
+.strow .seg button{padding:4px 10px;font-size:12px}
 /* Listas */
 .lbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .lbar select{flex:1;min-width:160px;padding:8px}
@@ -310,6 +313,14 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
     </details>
   </section>
 
+  <section class="card hidden" id="sinTipoCard">
+    <details id="sinTipoDet">
+      <summary>Papeles que no aclaran si son simple o doble (<span id="sinTipoCount">0</span>)</summary>
+      <div class="sub" style="margin:6px 0">El nombre no lo dice y la app no lo puede saber. Si conocés el paquete, marcalo: entra en el análisis de esa pestaña (se guarda en este dispositivo).</div>
+      <div id="sinTipoList"></div>
+    </details>
+  </section>
+
   <section class="card">
     <details>
       <summary>Todos los productos (<span id="allCount">0</span>)</summary>
@@ -377,6 +388,13 @@ const { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar } = window.SuperScrapCat
 const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS, promosUsables } = window.SuperScrapComun;
 // Promos del producto que el usuario puede usar (las de Comunidad Coto, solo si la marcó en sus medios).
 const promosDe = p => promosUsables(p.promos, S.medios);
+// Papel higiénico que no aclara simple/doble: clasificación del usuario { "<súper>:<id>": "simple" | "doble" }.
+let papelTipo = {};
+try { papelTipo = JSON.parse(localStorage.getItem("superscrap:papelTipo") || "{}") || {}; } catch {}
+// ¿Entra en la categoría? (además de los filtros, los papeles sin tipo que el usuario clasificó para esta pestaña)
+// Tipo de un papel que no lo dice en el nombre: lo que marcó el usuario o lo que se averiguó (PAPEL_TIPO_CONOCIDO).
+const tipoPapel = p => papelTipo[p.store + ":" + p.id] || window.SuperScrapCats.PAPEL_TIPO_CONOCIDO[p.store + ":" + p.id] || "";
+const enCategoria = (p, c) => matchesCat(p, c) || (!!c.sinTipo && matchesCat(p, c.sinTipo) && tipoPapel(p) === c.tipoPapel);
 const SEARCH = "busqueda"; // pestaña de búsqueda libre
 const PROMOS = "descuentos"; // pestaña de descuentos con medios de pago
 const LISTAS = "listas";     // pestaña de listas de compras (listas.js)
@@ -839,11 +857,11 @@ function renderZona(list) {
 }
 function filtered() {
   const c = conf();
-  filtered.lastHidden = products.filter(p => matchesCat(p, c) && hasZonaStock(p) === false).length;
+  filtered.lastHidden = products.filter(p => enCategoria(p, c) && hasZonaStock(p) === false).length;
   const ex = S.excluded.map(s => s.trim().toUpperCase()).filter(Boolean);
   return products.filter(p => {
     if (ex.some(b => p.brand.includes(b) || p.name.toUpperCase().includes(b))) return false;
-    if (!matchesCat(p, c)) return false;
+    if (!enCategoria(p, c)) return false;
     if (S.zona.only && hasZonaStock(p) === false) return false;
     if (cat !== "leche") return true;
     if (!S.tipos.special && SPECIAL_RX.test(p.name)) return false;
@@ -874,9 +892,32 @@ function render() {
   renderRank($("rankPromo"), top.best, "best");
   renderVerdicts(top);
   renderAll(list);
+  renderSinTipo();
   renderZona(list);
   if (cat === SEARCH) renderExcl(list.length);
 }
+// Papeles que no aclaran simple/doble: el usuario los clasifica (solo en las pestañas de papel).
+function renderSinTipo() {
+  const c = conf();
+  $("sinTipoCard").classList.toggle("hidden", !c.sinTipo);
+  if (!c.sinTipo) return;
+  // Los que ya se averiguaron no se listan (los marcados por el usuario sí, para poder cambiarlos).
+  const ps = products.filter(p => matchesCat(p, c.sinTipo) && !window.SuperScrapCats.PAPEL_TIPO_CONOCIDO[p.store + ":" + p.id]).sort((a, b) => STORES.indexOf(a.store) - STORES.indexOf(b.store) || a.name.localeCompare(b.name));
+  $("sinTipoCount").textContent = ps.length;
+  $("sinTipoList").innerHTML = ps.map(p => {
+    const k = p.store + ":" + p.id, t = papelTipo[k] || "";
+    return `<div class="strow"><span class="tag ${p.store}">${storeName(p.store)}</span>
+      <span class="stn">${esc(p.name)}<div class="sub">${fmt(p.shelf)}${p.detalle ? " · " + esc(p.detalle) : ""}</div></span>
+      <span class="seg">${[["simple", "Simple"], ["doble", "Doble"], ["", "?"]].map(([v, l]) =>
+        `<button class="${t === v ? "on" : ""}" data-ptipo="${esc(k)}" data-v="${v}">${l}</button>`).join("")}</span></div>`;
+  }).join("") || `<div class="empty">No hay.</div>`;
+}
+$("sinTipoList").onclick = ev => {
+  const b = ev.target.closest("[data-ptipo]"); if (!b) return;
+  if (b.dataset.v) papelTipo[b.dataset.ptipo] = b.dataset.v; else delete papelTipo[b.dataset.ptipo];
+  try { localStorage.setItem("superscrap:papelTipo", JSON.stringify(papelTipo)); } catch {}
+  render();
+};
 // Chips de palabras quitadas + cuántos productos quedaron afuera por ellas.
 function renderExcl(shown) {
   $("exclChips").innerHTML = qExcl.map((w, i) =>

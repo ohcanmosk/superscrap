@@ -10,7 +10,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { CATEGORIAS, ZONA, SIMULATION } = require("./categorias.js");
+const { CATEGORIAS, ZONA, SIMULATION, PAPEL_TIPO_CONOCIDO } = require("./categorias.js");
 const { tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat } = require("./comun.js");
 const { bajarPromos, combinarHistorial } = require("./promos.js");
 // Las URLs salen de categorias.js (las mismas que usa index.html). Clave = nombre del archivo.
@@ -92,7 +92,9 @@ const r2 = n => n == null ? null : Math.round(n * 100) / 100;
 function productosHistorial(cat, store, j) {
   const c = CATEGORIAS[cat], out = {};
   const add = (id, name, brand, o) => {
-    if (!o || !name || !matchesCat({ name, brand }, c)) return;
+    // Papeles que no dicen simple/doble pero se sabe (PAPEL_TIPO_CONOCIDO) también entran en el histórico.
+    const conocido = c.sinTipo && matchesCat({ name, brand }, c.sinTipo) && PAPEL_TIPO_CONOCIDO[store + ":" + id] === c.tipoPapel;
+    if (!o || !name || !(matchesCat({ name, brand }, c) || conocido)) return;
     const sz = store === "coto" ? tamanoCoto(name, c, o) : tamano(name, c);
     if (cat === "leche" && (sz.size < 0.5 || sz.size > 2)) return;
     // El histórico no cuenta las promos solo para socios de Comunidad Coto.
