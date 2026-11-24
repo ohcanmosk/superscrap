@@ -120,11 +120,12 @@ function costoLinea(p, n) {
 // sin tamaño, por precio por kg/L (los de tamaño desconocido al final).
 const memoCands = new Map();
 function candidatos(it, s) {
-  const key = [catalogoVer, s, it.q, it.marca, it.tam, it.cant, !!S.medios.comunidad].join("|");
+  const desc = it.descartes?.[s] || [];
+  const key = [catalogoVer, s, it.q, it.marca, it.tam, it.cant, !!S.medios.comunidad, desc.join(",")].join("|");
   if (memoCands.has(key)) return memoCands.get(key);
   const rows = catalogo?.[s]?.rows || [];
   const f = filtroItem(it), n = it.cant || 1, conTam = !!parseTam(it.tam);
-  const cs = rows.filter(f).map(x => { const p = prodDeCatalogo(s, x.r); const c = costoLinea(p, n); return { p, c, u: c.v / n }; });
+  const cs = rows.filter(x => f(x) && !desc.includes(String(x.r[0]))).map(x => { const p = prodDeCatalogo(s, x.r); const c = costoLinea(p, n); return { p, c, u: c.v / n }; });
   const k = x => conTam || !x.p.size ? null : x.u / x.p.size;
   cs.sort((a, b) => { const ka = k(a), kb = k(b); if (ka != null && kb != null) return ka - kb; if (ka != null) return -1; if (kb != null) return 1; return a.u - b.u; });
   const out = cs.slice(0, 30);
@@ -132,8 +133,11 @@ function candidatos(it, s) {
   return out;
 }
 // Producto elegido para el ítem en ese súper: el fijado por el usuario (si sigue en el catálogo) o el más conveniente.
+// fijos[s] = "-": el usuario dijo que en ese súper no hay nada que le sirva (cuenta como faltante).
+const NINGUNO = "-";
 function elegido(it, s) {
   const fijo = it.fijos?.[s];
+  if (fijo === NINGUNO) return null;
   if (fijo) {
     const x = (catalogo?.[s]?.rows || []).find(x => String(x.r[0]) === fijo);
     if (x) { const p = prodDeCatalogo(s, x.r); return { p, c: costoLinea(p, it.cant || 1), fijo: true }; }
@@ -220,14 +224,20 @@ function renderListas() {
       <div class="lirow"><label class="lcant">Cantidad <input type="number" min="1" max="99" value="${it.cant || 1}" data-cant="${esc(it.id)}"></label>
         <button class="del" data-delit="${esc(it.id)}" title="Sacar de la lista">✕ Sacar</button></div>
       ${STORES.filter(s => catalogo[s]).map(s => {
-        const cs = candidatos(it, s), e = elegido(it, s);
-        if (!e) return `<div class="lcand"><span class="dot ${s}"></span><span class="sub">${storeName(s)}: no se encontró</span></div>`;
-        const opts = cs.some(x => x.p.id === e.p.id) ? cs : [{ p: e.p, c: e.c }, ...cs];
-        return `<div class="lcand"><span class="dot ${s}"></span><select data-pick="${esc(it.id)}|${s}" title="${esc(e.p.name)}">
-            <option value="">Automático: el más conveniente</option>
-            ${opts.map(x => `<option value="${esc(x.p.id)}" ${e.fijo && x.p.id === e.p.id ? "selected" : ""}>${esc(x.p.name)} — ${fmt(x.p.shelf)}</option>`).join("")}
-          </select><b class="lprecio">${fmt(e.c.v)}</b></div>` +
-          (!e.fijo ? `<div class="lauto sub">${esc(e.p.name)}${e.fijoPerdido ? " (el que habías elegido ya no está)" : ""}</div>` : "");
+        const cs = candidatos(it, s), e = elegido(it, s), ninguno = it.fijos?.[s] === NINGUNO;
+        const nDesc = (it.descartes?.[s] || []).length;
+        const recuperar = nDesc ? ` <button class="linkbtn" data-undesc="${esc(it.id)}|${s}">recuperar descartados (${nDesc})</button>` : "";
+        const opts = !e ? cs : cs.some(x => x.p.id === e.p.id) ? cs : [{ p: e.p, c: e.c }, ...cs];
+        const select = `<select data-pick="${esc(it.id)}|${s}" title="${esc(e ? e.p.name : "")}">
+            <option value="" ${!e || e.fijo ? "" : "selected"}>Automático: el más conveniente</option>
+            <option value="${NINGUNO}" ${ninguno ? "selected" : ""}>✕ Ninguno: no comprar en ${storeName(s)}</option>
+            ${opts.map(x => `<option value="${esc(x.p.id)}" ${e && e.fijo && x.p.id === e.p.id ? "selected" : ""}>${esc(x.p.name)} — ${fmt(x.p.shelf)}</option>`).join("")}
+          </select>`;
+        if (!e) return `<div class="lcand"><span class="dot ${s}"></span>${cs.length || ninguno ? select : ""}<span class="sub lnone">${ninguno ? "no se compra acá" : nDesc ? "descartaste los que había" : "no se encontró"}</span></div>` +
+          (recuperar ? `<div class="lauto sub">${recuperar}</div>` : "");
+        return `<div class="lcand"><span class="dot ${s}"></span>${select}<b class="lprecio">${fmt(e.c.v)}</b></div>` +
+          `<div class="lauto sub">${e.fijo ? "" : esc(e.p.name) + (e.fijoPerdido ? " (el que habías elegido ya no está)" : "") +
+            ` <button class="linkbtn" data-desc="${esc(it.id)}|${s}|${esc(e.p.id)}" title="No es lo que busco: elegir el siguiente">✕ descartar</button>`}${recuperar}</div>`;
       }).join("")}
       </div></details>`;
     }).join("");
@@ -247,7 +257,7 @@ function renderListas() {
           ${r === win ? `<span class="tag good">conviene</span>` : r.faltan.length > win.faltan.length && dif <= 0 ? "" : `<span class="sub">+${fmt(dif)} (${(dif / win.total * 100).toFixed(1)}%)</span>`}
           ${r.faltan.length ? `<span class="tag warn">faltan ${r.faltan.length}</span>` : ""}</summary>
         <div class="tablewrap"><table class="ltab"><tr><th>Producto</th><th class="n">Cant.</th><th class="n">Subtotal</th></tr>
-        ${r.lineas.map(x => x.falta ? `<tr><td colspan="3" class="sub">✕ ${esc(itemTexto(x.it))}: no se encontró en ${storeName(r.s)}</td></tr>`
+        ${r.lineas.map(x => x.falta ? `<tr><td colspan="3" class="sub">✕ ${esc(itemTexto(x.it))}: ${x.it.fijos?.[r.s] === NINGUNO ? "elegiste no comprarlo" : (x.it.descartes?.[r.s] || []).length ? "descartaste los que había" : "no se encontró"} en ${storeName(r.s)}</td></tr>`
           : `<tr><td><a href="${esc(x.p.url)}" target="_blank" rel="noopener">${esc(x.p.name)}</a><div class="sub">${fmt(x.p.shelf)} c/u${x.nota ? " · " + esc(x.nota) : ""}</div></td>
               <td class="n">${x.n}</td><td class="n">${fmt(x.v)}</td></tr>`).join("")}
         ${r.ahorroPago ? `<tr><td colspan="3" class="sub">Ahorro con ${esc(medioLabel(r.pago))}: ${fmt(r.ahorroPago)}${r.topeAlcanzado ? " (llega al tope)" : ""}</td></tr>` : ""}
@@ -287,8 +297,17 @@ function initListas() {
     if (ev.target.open) abiertos.add(id); else abiertos.delete(id);
   }, true);
   $("lItems").addEventListener("click", ev => {
-    const id = ev.target.dataset?.delit; if (!id) return;
-    const l = listaActual(); l.items = l.items.filter(it => it.id !== id); guardarListas(); render();
+    const l = listaActual(); if (!l) return;
+    const ds = ev.target.dataset || {};
+    if (ds.delit) { l.items = l.items.filter(it => it.id !== ds.delit); }
+    else if (ds.desc) { // descartar el elegido automáticamente: pasa al siguiente
+      const [id, s, pid] = ds.desc.split("|"); const it = l.items.find(x => x.id === id); if (!it) return;
+      it.descartes = it.descartes || {}; it.descartes[s] = [...new Set([...(it.descartes[s] || []), pid])];
+    } else if (ds.undesc) {
+      const [id, s] = ds.undesc.split("|"); const it = l.items.find(x => x.id === id); if (!it?.descartes) return;
+      delete it.descartes[s];
+    } else return;
+    guardarListas(); render();
   });
   $("lItems").addEventListener("change", ev => {
     const l = listaActual(); if (!l) return;
