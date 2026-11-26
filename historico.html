@@ -128,7 +128,7 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
   </section>
 
   <section class="card">
-    <h2>¿Qué día de la semana conviene?</h2>
+    <h2>¿Qué día de la semana conviene? <span class="sub" id="h2SemU" style="font-weight:400"></span></h2>
     <div class="sub" id="subSemanaL" hidden>Promedio, para cada día de la semana, del total de la lista en cada súper. Con ★ y recuadro verde, el día más barato de cada súper; entre paréntesis, cuánto más caro está (en %) respecto de ese día.</div>
     <div class="sub" id="subSemana">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. Con ★ y recuadro verde, el día más barato de cada súper; al lado de cada precio, entre paréntesis, cuánto más caro está (en %) respecto de ese día. Ej.: (+14) = 14% más caro. Abajo de cada precio, la marca, el formato y el producto que fue el más barato ese día (si cambió entre semanas, el que más veces lo fue).</div>
     <div class="sub" id="cupInfo" style="margin-top:4px"></div>
@@ -165,7 +165,7 @@ const ORDEN_SEMANA = [1,2,3,4,5,6,0];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 // Sin decimales salvo precios chicos (ej. papel higiénico por metro: $16,58/m).
-const fmt = n => n == null || isNaN(n) ? "—" : "$" + n.toLocaleString("es-AR", { maximumFractionDigits: n < 100 ? 2 : 0 });
+const fmt = n => n == null || isNaN(n) ? "—" : "$" + n.toLocaleString("es-AR", n < 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
 const store = {
   get(k, d) { try { const v = localStorage.getItem("superscrap:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("superscrap:" + k, JSON.stringify(v)); } catch {} },
@@ -331,7 +331,7 @@ function masBarato(a) {
 // ---------- Render ----------
 // Tabla por día de la semana (sin o con promo) a partir de { súper: { día: { sin: {v,…}, con: {v,…} } } }.
 // detalle(lista de valores de ese día de la semana) → { small, tip }: qué producto fue (categorías) o nada (listas).
-function tablaSemana(m, mins, VIS, detalle) {
+function tablaSemana(m, mins, VIS, detalle, f = fmt) {
   const rows = VIS.map(s => {
     const acc = {}; Object.entries(mins[s]).sort(([a], [b]) => a.localeCompare(b)).forEach(([d, x]) => { if (!x[m]) return; const w = diaSemana(d); (acc[w] ||= []).push(x[m]); });
     const avg = Object.fromEntries(Object.entries(acc).map(([w, a]) => [w, { v: a.reduce((t, y) => t + y.v, 0) / a.length, n: a.length, det: detalle ? detalle(a) : null }]));
@@ -341,7 +341,7 @@ function tablaSemana(m, mins, VIS, detalle) {
       const best = vals.length > 1 && x.v === lo, pct = (x.v / lo - 1) * 100;
       const tip = `${x.n} día${x.n === 1 ? "" : "s"} con datos${best ? " · el día más barato" : ` · ${pct.toFixed(1)}% más caro que el día más barato`}` + (x.det?.tip || "");
       return `<td class="${best ? "best" : ""}" title="${esc(tip)}">` +
-        (best ? `<span class="star">★</span>${fmt(x.v)}` : `${fmt(x.v)}${vals.length > 1 ? varPct(pct) : ""}`) +
+        (best ? `<span class="star">★</span>${f(x.v)}` : `${f(x.v)}${vals.length > 1 ? varPct(pct) : ""}`) +
         (x.det ? x.det.small : best ? "<small>el más barato</small>" : "") + `</td>`;
     }).join("") + `<td>${vals.length ? ((hi / lo - 1) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
   });
@@ -358,7 +358,7 @@ function renderDiario(VIS, dias_, mins, fmtY, det) {
     `<span><i style="border-color:var(--muted)"></i>sin promo</span><span><i class="dash" style="border-color:var(--muted)"></i>con promo</span>`;
   lineChart($("chDiario"), dias_, series, fmtY);
   $("tbDiario").innerHTML = `<table><tr><th>Día</th>${VIS.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
-    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${VIS.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
+    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${VIS.map(s => `<td>${mins[s][d]?.sin ? fmtY(mins[s][d].sin.v) : "—"}</td><td>${mins[s][d]?.con ? fmtY(mins[s][d].con.v) : "—"}</td>`).join("")}</tr>`).join("") + "</table>";
 }
 // Aviso del cupón Club Dia: si se cuenta o no.
 function renderCupInfo(VIS) {
@@ -375,9 +375,10 @@ function render() {
   $("rango").innerHTML = (enListas ? [7, 14, 30] : [7, 14, 40]).map(n => `<button class="${n === diasVis() ? "on" : ""}" data-dias="${n}">${n} días</button>`).join("");
   ["secFiltros", "secProd"].forEach(id => $(id).hidden = enListas);
   $("secLista").hidden = !enListas;
-  $("h2Diario").textContent = enListas ? "Total de la lista en cada súper, día por día" : "Lo más barato de cada súper, día por día";
+  $("h2Diario").textContent = enListas ? "Total de la lista en cada súper, día por día" : "Lo más barato por " + ({ L: "litro", kg: "kg", m: "metro" }[CATEGORIAS[cat]?.unit] || "unidad") + " de cada súper, día por día";
   $("subDiario").hidden = $("subSemana").hidden = enListas;
   $("subDiarioL").hidden = $("subSemanaL").hidden = !enListas;
+  $("h2SemU").textContent = enListas ? "(total de la lista)" : "(precio por " + ({ L: "litro", kg: "kg", m: "metro" }[CATEGORIAS[cat].unit] || "unidad") + ")";
   if (enListas) return renderLista();
   const unit = CATEGORIAS[cat].unit;
   const UNIDAD = { L: "litro", kg: "kg", m: "metro" };
@@ -394,7 +395,8 @@ function render() {
   const nombre = k => H.productos[k]?.[0] || k;
 
   // 1) Línea por día: 3 súper × (sin promo llena, con promo punteada)
-  renderDiario(VIS, dias_, mins, v => fmt(v) + "/" + unit, (x, m) => nombre(x.k) + (m === "con" && x.txt ? " · " + x.txt : ""));
+  const fU = v => fmt(v) + "/" + unit;
+  renderDiario(VIS, dias_, mins, fU, (x, m) => nombre(x.k) + (m === "con" && x.txt ? " · " + x.txt : ""));
 
   // 2) Tablas por día de la semana, con la marca, el formato y el producto más barato de cada día
   const detalle = a => {
@@ -405,8 +407,8 @@ Más barato: ${x.nombre}${x.txt ? " · " + x.txt : ""}${x.otros ? `
 (otro${x.otros === 1 ? "" : "s"} ${x.otros} día${x.otros === 1 ? "" : "s"}: ${x.otrosNombres})` : ""}` };
   };
   renderCupInfo(VIS);
-  $("semSin").innerHTML = tablaSemana("sin", mins, VIS, detalle);
-  $("semCon").innerHTML = tablaSemana("con", mins, VIS, detalle);
+  $("semSin").innerHTML = tablaSemana("sin", mins, VIS, detalle, fU);
+  $("semCon").innerHTML = tablaSemana("con", mins, VIS, detalle, fU);
 
   // 3) Un producto
   const keys = Object.keys(H.productos).filter(k => dias_.some(d => pd[d][k]));
