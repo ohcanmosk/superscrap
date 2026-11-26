@@ -326,7 +326,8 @@ details summary{cursor:pointer;font-weight:700;font-size:16px}
       <summary>Todos los productos (<span id="allCount">0</span>)</summary>
       <div class="brands" id="allStores"></div>
       <div class="brands" id="brands"></div>
-      <div class="tablewrap" style="margin-top:10px"><table id="allTable"></table></div>
+      <div class="sub" id="allInfo" style="margin-top:10px"></div>
+      <div class="tablewrap" style="margin-top:6px"><table id="allTable"></table></div>
     </details>
   </section>
   </div>
@@ -1054,11 +1055,15 @@ function renderAll(all) {
   const rows = list.slice().sort((a, b) => cmp(a, b, "one")).map(({ p, x }) => `<tr>
     <td><span class="tag ${p.store}">${storeName(p.store)}</span></td>
     <td><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(p.name)}</a></td>
-    <td class="n">${fmt(p.shelf)}</td><td class="n">${fmt(x.one)}</td>
+    <td class="n">${fmt(p.shelf)}</td><td class="n">${fmt(x.one)}${x.one < p.shelf - 0.5 ? `<div class="sub">−${Math.round((1 - x.one / p.shelf) * 100)}% vs. web</div>` : ""}</td>
     <td class="n">${x.oneU != null ? `${fmt(x.oneU)}/${unitOf(p)}` : "—"}${p.detalle ? `<div class="sub">${esc(p.detalle)}</div>` : ""}</td>
     <td class="n">${x.best < x.one - 0.5 ? fmt(x.best) : "—"}</td>
     <td>${esc(x.best < x.one - 0.5 ? x.bestNote : x.oneNote)}</td><td>${stockHTML(p)}</td></tr>`).join("");
-  $("allTable").innerHTML = `<tr><th></th><th>Producto</th><th class="n">Web</th><th class="n">1 unidad (día)</th><th class="n">Por kg/L</th><th class="n">Con promo c/u</th><th>Detalle</th><th>Stock zona</th></tr>` + rows;
+  const dia = selDay === todayIdx ? "hoy" : "el " + DAYS_FULL[selDay];
+  $("allInfo").innerHTML = `<b>Precio web</b>: el que publica la página del súper (con impuestos). ` +
+    `<b>Pagás llevando 1</b>: lo que pagás ${dia} por una sola unidad, con su descuento de 1 unidad (si tiene) o el mejor descuento de tus medios de pago de ese día (sin contar tope ni compra mínima; están en Detalle). ` +
+    `<b>Por kg/L</b>: ese mismo precio llevando 1, por kg, litro o metro. <b>Con promo c/u</b>: cada una sale eso si aprovechás la promo por cantidad (2da al 50%, 3x2…).`;
+  $("allTable").innerHTML = `<tr><th></th><th>Producto</th><th class="n" title="Precio que publica la web del súper, con impuestos">Precio web</th><th class="n" title="Lo que pagás ${dia} llevando una sola unidad, con tus descuentos">Pagás llevando 1<div class="sub" style="font-weight:400">${dia}</div></th><th class="n">Por kg/L</th><th class="n">Con promo c/u</th><th>Detalle</th><th>Stock zona</th></tr>` + rows;
 }
 
 // ---------- Configuración ----------

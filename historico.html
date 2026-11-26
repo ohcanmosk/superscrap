@@ -186,7 +186,9 @@ const diasVis = () => cat === LISTAS ? diasL : dias;
 let listaSel = urlLista || store.get("histLista", null);
 let HC = null; // histórico del catálogo: { <súper>: { dias, p } } (rama "catalogo", historial/<súper>.json)
 let prodSel = null;
-let semSel = null; // semana elegida en "¿Qué día de la semana conviene?": lunes "YYYY-MM-DD", o null = promedio del período
+// Semana elegida en "¿Qué día de la semana conviene?": lunes "YYYY-MM-DD", null = promedio del período,
+// "auto" = esta semana (por defecto; si todavía no tiene datos, la última que tenga).
+let semSel = "auto";
 let H = null; // historial cargado
 // Filtros por categoría: súper, formato (tamaño del envase), marca y texto. Vacío = todos.
 const FILTRO_VACIO = { super: [], formato: [], marca: [], texto: "" };
@@ -357,7 +359,8 @@ function renderSemana(minsAll, desde, VIS, detalle, f = fmt) {
   const fechasAll = [...new Set(VIS.flatMap(s => Object.keys(minsAll[s])))].sort();
   const semanas = [...new Set(fechasAll.map(lunesDe))].sort().reverse();
   const hoyLunes = lunesDe(new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10));
-  if (semSel && !semanas.includes(semSel)) semSel = null;
+  if (semSel === "auto") semSel = semanas.includes(hoyLunes) ? hoyLunes : semanas[0] || null;
+  else if (semSel && !semanas.includes(semSel)) semSel = null;
   const nombreSem = l => l === hoyLunes ? "Esta semana" : l === sumarDias(hoyLunes, -7) ? "Semana pasada" : `${ddmm(l)} al ${ddmm(sumarDias(l, 6))}`;
   $("semSel").innerHTML = `<button class="chip ${semSel ? "" : "on"}" data-sem="">Promedio (${diasVis()} días)</button>` +
     semanas.map(l => `<button class="chip ${l === semSel ? "on" : ""}" data-sem="${l}" title="Lunes ${ddmm(l)} a domingo ${ddmm(sumarDias(l, 6))}">${nombreSem(l)}</button>`).join("");
@@ -641,7 +644,7 @@ function lineChart(el, xs, series, fmtY) {
 }
 
 // ---------- Eventos ----------
-$("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; cargarFiltros(); cargar(); };
+$("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; semSel = "auto"; cargarFiltros(); cargar(); };
 $("rango").onclick = ev => { const n = +ev.target.dataset?.dias; if (!n) return;
   if (cat === LISTAS) { diasL = n; store.set("histDiasListas", n); } else { dias = n; store.set("histDias", dias); } render(); };
 $("lista").onchange = () => { listaSel = $("lista").value; store.set("histLista", listaSel); render(); };
