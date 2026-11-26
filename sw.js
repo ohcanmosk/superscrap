@@ -2,7 +2,7 @@
 // La página y data/*.json se piden primero a la red; si no hay red, se usa la copia en caché.
 // Se pide con cache "no-cache": el navegador revalida con GitHub Pages (que deja guardar 10 min),
 // así una versión nueva se ve al recargar una vez.
-const CACHE = "superscrap-v33";
+const CACHE = "superscrap-v34";
 const SHELL = ["./", "index.html", "historico.html", "categorias.js", "comun.js", "listas.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {

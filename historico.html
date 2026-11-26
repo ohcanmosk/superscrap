@@ -64,6 +64,8 @@ td.best .star{margin-right:3px}
 td.worst{color:var(--muted)}
 td small{display:block;color:var(--muted);font-weight:400;font-size:11px}
 td.best small{color:inherit;opacity:.8}
+/* Qué producto fue el más barato: marca · formato y el nombre (recortado; completo al pasar el mouse) */
+td small.pn{max-width:170px;margin-left:auto;overflow:hidden;text-overflow:ellipsis}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}
 .note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:16px}
 details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:8px}
@@ -99,7 +101,14 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
   </div>
   <div class="note" id="aviso" hidden></div>
 
-  <section class="card">
+  <section class="card" id="secLista" hidden>
+    <h2>🧾 Mis listas</h2>
+    <div class="filters" style="margin:10px 0 4px"><select id="lista"></select></div>
+    <div class="sub" id="listaInfo"></div>
+    <details><summary>Qué productos se comparan</summary><div class="tablewrap" id="listaProds"></div></details>
+  </section>
+
+  <section class="card" id="secFiltros">
     <h2>Filtros</h2>
     <div class="frow"><span>Súper</span><div class="chips" id="fSuper"></div></div>
     <div class="frow"><span>Formato</span><div class="chips" id="fFormato"></div></div>
@@ -110,8 +119,9 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
   </section>
 
   <section class="card">
-    <h2>Lo más barato de cada súper, día por día</h2>
-    <div class="sub">Precio por <span class="u">kg</span> del producto más barato de cada súper ese día. Línea llena = sin promo (precio de góndola en la web); línea punteada = aprovechando la mejor promo.</div>
+    <h2 id="h2Diario">Lo más barato de cada súper, día por día</h2>
+    <div class="sub" id="subDiarioL" hidden>Cuánto salía la lista (con las cantidades de cada ítem) en cada súper cada día. Línea llena = sin promo (precio de góndola); línea punteada = con las promos del producto (2da al 50%, 3x2… según la cantidad).</div>
+    <div class="sub" id="subDiario">Precio por <span class="u">kg</span> del producto más barato de cada súper ese día. Línea llena = sin promo (precio de góndola en la web); línea punteada = aprovechando la mejor promo.</div>
     <div class="legend" id="legDiario"></div>
     <div class="chart" id="chDiario"></div>
     <details><summary>Ver como tabla</summary><div class="tablewrap" id="tbDiario"></div></details>
@@ -119,14 +129,16 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
 
   <section class="card">
     <h2>¿Qué día de la semana conviene?</h2>
-    <div class="sub">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. Con ★ y recuadro verde, el día más barato de cada súper; al lado de cada precio, entre paréntesis, cuánto más caro está (en %) respecto de ese día. Ej.: (+14) = 14% más caro.</div>
+    <div class="sub" id="subSemanaL" hidden>Promedio, para cada día de la semana, del total de la lista en cada súper. Con ★ y recuadro verde, el día más barato de cada súper; entre paréntesis, cuánto más caro está (en %) respecto de ese día.</div>
+    <div class="sub" id="subSemana">Promedio, para cada día de la semana, del precio por <span class="u">kg</span> más barato de cada súper. Con ★ y recuadro verde, el día más barato de cada súper; al lado de cada precio, entre paréntesis, cuánto más caro está (en %) respecto de ese día. Ej.: (+14) = 14% más caro. Abajo de cada precio, la marca, el formato y el producto que fue el más barato ese día (si cambió entre semanas, el que más veces lo fue).</div>
+    <div class="sub" id="cupInfo" style="margin-top:4px"></div>
     <h3>Sin promo</h3>
     <div class="tablewrap" id="semSin"></div>
     <h3>Con promo</h3>
     <div class="tablewrap" id="semCon"></div>
   </section>
 
-  <section class="card">
+  <section class="card" id="secProd">
     <h2>Un producto</h2>
     <div class="sub">Elegí un producto para ver su precio día por día y qué promo tuvo cada día de la semana.</div>
     <div class="filters" style="margin:10px 0 4px"><select id="prod"></select></div>
@@ -137,7 +149,8 @@ input[type=search]{font:inherit;color:inherit;background:var(--card);border:1px 
   </section>
 
   <div class="sub">Son los precios publicados en la web de cada súper, guardados 3 veces por día (00:25, 7:17 y 13:17) por el robot de GitHub.
-    No incluyen los descuentos con medios de pago (Mercado Pago, MODO, bancos), porque no son precios publicados del producto.</div>
+    No incluyen los descuentos con medios de pago (Mercado Pago, MODO, bancos), porque no son precios publicados del producto.
+    Sí incluyen, en "con promo", el cupón Club Dia de los martes si marcaste Club Dia en tus medios de pago (pestaña 💳 Descuentos de la app).</div>
 </div>
 
 <script src="categorias.js"></script>
@@ -161,9 +174,16 @@ const color = s => getComputedStyle(document.documentElement).getPropertyValue("
 // Marcas excluidas en la configuración de la app (ej. TREGAR) también se excluyen acá.
 const excluidas = (store.get("settings", {}).excluded || ["TREGAR"]).map(s => s.trim().toUpperCase()).filter(Boolean);
 
-let cat = store.get("histCat", null) || store.get("cat", "leche");
-if (!CATEGORIAS[cat]) cat = "leche";
+// Pestaña "🧾 Mis listas": el total de cada lista de compras de la app, día por día (precios del catálogo, 30 días).
+const LISTAS = "listas";
+const urlLista = new URLSearchParams(location.search).get("lista");
+let cat = urlLista ? LISTAS : store.get("histCat", null) || store.get("cat", "leche");
+if (!CATEGORIAS[cat] && cat !== LISTAS) cat = "leche";
 let dias = store.get("histDias", 40);
+let diasL = store.get("histDiasListas", 30);
+const diasVis = () => cat === LISTAS ? diasL : dias;
+let listaSel = urlLista || store.get("histLista", null);
+let HC = null; // histórico del catálogo: { <súper>: { dias, p } } (rama "catalogo", historial/<súper>.json)
 let prodSel = null;
 let H = null; // historial cargado
 // Filtros por categoría: súper, formato (tamaño del envase), marca y texto. Vacío = todos.
@@ -171,7 +191,10 @@ const FILTRO_VACIO = { super: [], formato: [], marca: [], texto: "" };
 let F = structuredClone(FILTRO_VACIO);
 const cargarFiltros = () => { F = Object.assign(structuredClone(FILTRO_VACIO), store.get("histFiltros:" + cat, {})); };
 const guardarFiltros = () => store.set("histFiltros:" + cat, F);
-const { norm } = window.SuperScrapComun;
+const { norm, excluido, MEDIOS } = window.SuperScrapComun;
+// Cupón Club Dia de los martes: se cuenta en "con promo" si el usuario tiene Club Dia en sus medios de pago (como en la app).
+const misMedios = store.get("settings", {}).medios || {};
+let cupones = []; // cupones vistos por el robot (data/promos.json: vigentes + "vistas", que guarda 70 días)
 // Marca agrupada como en la app ("LA SERENISIMA" = "SERENISIMA").
 const marcaKey = b => norm(b).replace(/[^a-z0-9 ]/g, " ").replace(/^\s*(la|el|los|las)\s+/, "").replace(/\s+/g, " ").trim() || "sin marca";
 const titleCase = t => t.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
@@ -207,17 +230,42 @@ const ddmm = d => d.slice(8, 10) + "/" + d.slice(5, 7);
 // ---------- Datos ----------
 async function cargar() {
   $("aviso").hidden = true;
+  await cargarCupones();
+  if (cat === LISTAS) { await cargarCatalogoHist(); return render(); }
   try {
     const r = await fetch(`data/historial/${cat}.json`, { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     H = await r.json();
   } catch (e) {
     H = null;
+  }
+  if (!H) {
     aviso(location.protocol === "file:"
       ? "Abrí el histórico desde la app (iniciar.bat → http://localhost:8787) o desde GitHub Pages: con doble clic el navegador no deja leer los datos."
       : "Todavía no hay histórico para esta categoría. Se empieza a juntar cuando el robot de GitHub corre con la versión nueva (3 veces por día).");
   }
   render();
+}
+async function cargarCupones() {
+  if (cupones.length) return;
+  try {
+    const r = await fetch("data/promos.json", { cache: "no-store" });
+    const P = r.ok ? await r.json() : {};
+    const vistos = new Map();
+    [...(P.vistas || []), ...(P.promos || [])].filter(p => p.cupon && p.pct).forEach(p => vistos.set(p.id, p));
+    cupones = [...vistos.values()];
+  } catch {}
+}
+// Histórico del catálogo: primero ./catalogo/historial/ (servidor local con node catalogo.js), si no la rama "catalogo".
+async function cargarCatalogoHist() {
+  if (HC) return;
+  const out = {};
+  await Promise.all(STORES.map(async s => {
+    for (const base of ["catalogo/", window.SuperScrapCats.CATALOGO_URL]) {
+      try { const r = await fetch(base + "historial/" + s + ".json", { cache: "no-cache" }); if (r.ok) { out[s] = await r.json(); return; } } catch {}
+    }
+  }));
+  if (Object.keys(out).length) HC = out;
 }
 function aviso(t) { $("aviso").textContent = t; $("aviso").hidden = false; }
 
@@ -227,6 +275,12 @@ function precioToma(v) {
   const con = pu != null && pu < s ? pu : s;
   const conPromo = pu != null && pu < s;
   return { sin: s, con, txt: conPromo ? txt + (pq > 1 && !/llevando/i.test(txt) ? ` (llevando ${pq})` : "") : "" };
+}
+// Cupón que vale ese día en ese súper para ese producto (Club Dia: martes, con exclusiones), si el usuario lo usa.
+function cuponDe(st, d, name) {
+  const w = diaSemana(d);
+  return cupones.find(c => c.super === st && misMedios[c.medio] && c.dias.includes(w) &&
+    (!c.desde || c.desde <= d) && (!c.hasta || c.hasta >= d) && !excluido({ name }, c)) || null;
 }
 // Por día: { "YYYY-MM-DD": { key: { sin, con, txt } } } con el menor precio del día de cada producto.
 function porDia() {
@@ -240,6 +294,9 @@ function porDia() {
       if (excluidas.some(b => info[1].includes(b) || info[0].toUpperCase().includes(b))) continue;
       if (!pasa(k)) continue;
       const x = precioToma(v), prev = d[k];
+      // El cupón Club Dia se suma a las promos del producto (es acumulable): va sobre el precio "con promo".
+      const cup = cuponDe(info[2], t.d, info[0]);
+      if (cup) { x.con *= 1 - cup.pct / 100; x.txt = (x.txt ? x.txt + " + " : "") + `−${cup.pct}% cupón ${MEDIOS[cup.medio]?.label || cup.medio}`; }
       d[k] = !prev ? x : { sin: Math.min(prev.sin, x.sin), con: Math.min(prev.con, x.con), txt: x.con < prev.con ? x.txt : prev.txt };
     }
   }
@@ -254,18 +311,74 @@ function minimosPorSuper(pd) {
       const cur = (out[s][d] ||= { sin: null, con: null });
       for (const m of ["sin", "con"]) {
         const v = x[m] / size;
-        if (!cur[m] || v < cur[m].v) cur[m] = { v, k, txt: x.txt };
+        if (!cur[m] || v < cur[m].v) cur[m] = { v, k, txt: m === "con" ? x.txt : "" };
       }
     }
   }
   return out;
 }
 
+// El producto más barato de un día de la semana (entre las semanas del período): el que más veces lo fue; si empatan, el más reciente.
+function masBarato(a) {
+  const n = new Map(); a.forEach(x => n.set(x.k, (n.get(x.k) || 0) + 1));
+  const k = [...n].sort((x, y) => y[1] - x[1] || a.findLastIndex(z => z.k === y[0]) - a.findLastIndex(z => z.k === x[0]))[0][0];
+  const [nombre, marca, , size, unit] = H.productos[k];
+  const otros = a.filter(x => x.k !== k);
+  return { k, nombre, marca: titleCase((marca || "sin marca").replace(/^s*(LA|EL|LOS|LAS)s+/i, "")), formato: formato(size, unit),
+    txt: a.findLast(x => x.k === k).txt, otros: otros.length, otrosNombres: [...new Set(otros.map(x => H.productos[x.k][0]))].join("; ") };
+}
+
 // ---------- Render ----------
+// Tabla por día de la semana (sin o con promo) a partir de { súper: { día: { sin: {v,…}, con: {v,…} } } }.
+// detalle(lista de valores de ese día de la semana) → { small, tip }: qué producto fue (categorías) o nada (listas).
+function tablaSemana(m, mins, VIS, detalle) {
+  const rows = VIS.map(s => {
+    const acc = {}; Object.entries(mins[s]).sort(([a], [b]) => a.localeCompare(b)).forEach(([d, x]) => { if (!x[m]) return; const w = diaSemana(d); (acc[w] ||= []).push(x[m]); });
+    const avg = Object.fromEntries(Object.entries(acc).map(([w, a]) => [w, { v: a.reduce((t, y) => t + y.v, 0) / a.length, n: a.length, det: detalle ? detalle(a) : null }]));
+    const vals = Object.values(avg).map(x => x.v), lo = Math.min(...vals), hi = Math.max(...vals);
+    return `<tr><td><span class="dot" style="background:${color(s)}"></span>${NAME[s]}</td>` + ORDEN_SEMANA.map(w => {
+      const x = avg[w]; if (!x) return `<td class="worst">—</td>`;
+      const best = vals.length > 1 && x.v === lo, pct = (x.v / lo - 1) * 100;
+      const tip = `${x.n} día${x.n === 1 ? "" : "s"} con datos${best ? " · el día más barato" : ` · ${pct.toFixed(1)}% más caro que el día más barato`}` + (x.det?.tip || "");
+      return `<td class="${best ? "best" : ""}" title="${esc(tip)}">` +
+        (best ? `<span class="star">★</span>${fmt(x.v)}` : `${fmt(x.v)}${vals.length > 1 ? varPct(pct) : ""}`) +
+        (x.det ? x.det.small : best ? "<small>el más barato</small>" : "") + `</td>`;
+    }).join("") + `<td>${vals.length ? ((hi / lo - 1) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
+  });
+  return `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}<th title="Diferencia entre el día más caro y el más barato">Variación</th></tr>${rows.join("")}</table>`;
+}
+// Gráfico por día + tabla, para categorías (precio por kg/L) y listas (total).
+function renderDiario(VIS, dias_, mins, fmtY, det) {
+  const series = [];
+  VIS.forEach(s => ["sin", "con"].forEach(m => series.push({
+    name: NAME[s] + (m === "con" ? " con promo" : ""), color: color(s), dash: m === "con", label: m === "sin" ? NAME[s] : null,
+    pts: dias_.map(d => mins[s][d]?.[m] ? { x: d, y: mins[s][d][m].v, det: det(mins[s][d][m], m) } : null),
+  })));
+  $("legDiario").innerHTML = VIS.map(s => `<span><i style="border-color:${color(s)}"></i>${NAME[s]}</span>`).join("") +
+    `<span><i style="border-color:var(--muted)"></i>sin promo</span><span><i class="dash" style="border-color:var(--muted)"></i>con promo</span>`;
+  lineChart($("chDiario"), dias_, series, fmtY);
+  $("tbDiario").innerHTML = `<table><tr><th>Día</th>${VIS.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
+    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${VIS.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
+}
+// Aviso del cupón Club Dia: si se cuenta o no.
+function renderCupInfo(VIS) {
+  const cupsDia = cupones.filter(c => VIS.includes(c.super));
+  $("cupInfo").innerHTML = !cupsDia.length ? "" : cupsDia.some(c => misMedios[c.medio])
+    ? `"Con promo" incluye el cupón Club Dia de los martes (−${cupsDia[0].pct}%, sobre la promo del producto; desde el ${ddmm(cupsDia.map(c => c.desde).sort()[0])}, cuando el robot lo empezó a ver).`
+    : `El cupón Club Dia de los martes (−${cupsDia[0].pct}%) no se cuenta porque no tenés Club Dia marcado en tus medios de pago (💳 Descuentos en la app).`;
+}
 function render() {
+  const enListas = cat === LISTAS;
   $("tabs").innerHTML = Object.entries(CATEGORIAS).map(([k, c]) =>
-    `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${c.emoji} ${esc(c.tab || c.label)}</button>`).join("");
-  $("rango").innerHTML = [7, 14, 40].map(n => `<button class="${n === dias ? "on" : ""}" data-dias="${n}">${n} días</button>`).join("");
+    `<button class="tab ${k === cat ? "on" : ""}" data-cat="${k}">${c.emoji} ${esc(c.tab || c.label)}</button>`).join("") +
+    `<button class="tab ${enListas ? "on" : ""}" data-cat="${LISTAS}">🧾 Mis listas</button>`;
+  $("rango").innerHTML = (enListas ? [7, 14, 30] : [7, 14, 40]).map(n => `<button class="${n === diasVis() ? "on" : ""}" data-dias="${n}">${n} días</button>`).join("");
+  ["secFiltros", "secProd"].forEach(id => $(id).hidden = enListas);
+  $("secLista").hidden = !enListas;
+  $("h2Diario").textContent = enListas ? "Total de la lista en cada súper, día por día" : "Lo más barato de cada súper, día por día";
+  $("subDiario").hidden = $("subSemana").hidden = enListas;
+  $("subDiarioL").hidden = $("subSemanaL").hidden = !enListas;
+  if (enListas) return renderLista();
   const unit = CATEGORIAS[cat].unit;
   const UNIDAD = { L: "litro", kg: "kg", m: "metro" };
   document.querySelectorAll(".u").forEach(e => e.textContent = UNIDAD[unit] || unit);
@@ -281,34 +394,19 @@ function render() {
   const nombre = k => H.productos[k]?.[0] || k;
 
   // 1) Línea por día: 3 súper × (sin promo llena, con promo punteada)
-  const series = [];
-  VIS.forEach(s => ["sin", "con"].forEach(m => series.push({
-    name: NAME[s] + (m === "con" ? " con promo" : ""), color: color(s), dash: m === "con", label: m === "sin" ? NAME[s] : null,
-    pts: dias_.map(d => mins[s][d]?.[m] ? { x: d, y: mins[s][d][m].v, det: nombre(mins[s][d][m].k) + (m === "con" && mins[s][d][m].txt ? " · " + mins[s][d][m].txt : "") } : null),
-  })));
-  $("legDiario").innerHTML = VIS.map(s => `<span><i style="border-color:${color(s)}"></i>${NAME[s]}</span>`).join("") +
-    `<span><i style="border-color:var(--muted)"></i>sin promo</span><span><i class="dash" style="border-color:var(--muted)"></i>con promo</span>`;
-  lineChart($("chDiario"), dias_, series, v => fmt(v) + "/" + unit);
-  $("tbDiario").innerHTML = `<table><tr><th>Día</th>${VIS.map(s => `<th>${NAME[s]}</th><th>${NAME[s]} c/promo</th>`).join("")}</tr>` +
-    dias_.slice().reverse().map(d => `<tr><td>${DIAS[diaSemana(d)]} ${ddmm(d)}</td>${VIS.map(s => `<td>${fmt(mins[s][d]?.sin?.v)}</td><td>${fmt(mins[s][d]?.con?.v)}</td>`).join("")}</tr>`).join("") + "</table>";
+  renderDiario(VIS, dias_, mins, v => fmt(v) + "/" + unit, (x, m) => nombre(x.k) + (m === "con" && x.txt ? " · " + x.txt : ""));
 
-  // 2) Tablas por día de la semana
-  const semana = m => {
-    const rows = VIS.map(s => {
-      const acc = {}; Object.entries(mins[s]).forEach(([d, x]) => { if (!x[m]) return; const w = diaSemana(d); (acc[w] ||= []).push(x[m].v); });
-      const avg = Object.fromEntries(Object.entries(acc).map(([w, a]) => [w, { v: a.reduce((x, y) => x + y, 0) / a.length, n: a.length }]));
-      const vals = Object.values(avg).map(x => x.v), lo = Math.min(...vals), hi = Math.max(...vals);
-      return `<tr><td><span class="dot" style="background:${color(s)}"></span>${NAME[s]}</td>` + ORDEN_SEMANA.map(w => {
-        const x = avg[w]; if (!x) return `<td class="worst">—</td>`;
-        const best = vals.length > 1 && x.v === lo, pct = (x.v / lo - 1) * 100;
-        return `<td class="${best ? "best" : ""}" title="${x.n} día${x.n === 1 ? "" : "s"} con datos${best ? "" : ` · ${pct.toFixed(1)}% más caro que el día más barato`}">` +
-          (best ? `<span class="star">★</span>${fmt(x.v)}<small>el más barato</small>` : `${fmt(x.v)}${vals.length > 1 ? varPct(pct) : ""}`) + `</td>`;
-      }).join("") + `<td>${vals.length ? ((hi / lo - 1) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
-    });
-    return `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}<th title="Diferencia entre el día más caro y el más barato">Variación</th></tr>${rows.join("")}</table>`;
+  // 2) Tablas por día de la semana, con la marca, el formato y el producto más barato de cada día
+  const detalle = a => {
+    const x = masBarato(a);
+    return { small: `<small>${esc(x.marca)} · ${esc(x.formato)}${x.otros ? " ⁺" : ""}</small><small class="pn">${esc(x.nombre)}</small>`,
+      tip: `
+Más barato: ${x.nombre}${x.txt ? " · " + x.txt : ""}${x.otros ? `
+(otro${x.otros === 1 ? "" : "s"} ${x.otros} día${x.otros === 1 ? "" : "s"}: ${x.otrosNombres})` : ""}` };
   };
-  $("semSin").innerHTML = semana("sin");
-  $("semCon").innerHTML = semana("con");
+  renderCupInfo(VIS);
+  $("semSin").innerHTML = tablaSemana("sin", mins, VIS, detalle);
+  $("semCon").innerHTML = tablaSemana("con", mins, VIS, detalle);
 
   // 3) Un producto
   const keys = Object.keys(H.productos).filter(k => dias_.some(d => pd[d][k]));
@@ -357,6 +455,70 @@ function renderProducto(pd, dias_) {
     return `<td class="promos" style="white-space:normal;min-width:90px;text-align:left">${t.length ? t.map(([x, n]) => `${esc(x)} <span title="días con esa promo / días con datos">(${n}/${tot})</span>`).join("<br>") : "ninguna"}</td>`;
   }).join("")}</tr>`;
   $("semProd").innerHTML = `<table><tr><th></th>${ORDEN_SEMANA.map(w => `<th>${DIAS[w]}</th>`).join("")}</tr>${fila("sin", "Sin promo")}${fila("con", "Con promo c/u")}${promos}</table>`;
+}
+
+// ---------- Mis listas ----------
+// Día del histórico del catálogo (días desde 1/1/1970) → "YYYY-MM-DD".
+const fechaDeDia = n => new Date(n * 864e5).toISOString().slice(0, 10);
+// Costo de n unidades con las promos del producto, como en la app: promos de 1 unidad y por cantidad de a grupos
+// (con 3 y "2da al 50%": 2 con promo + 1 normal). pares = [unidades, c/u, unidades, c/u...].
+function costoN(n, shelf, pares) {
+  const ps = []; for (let i = 0; i + 1 < pares.length; i += 2) ps.push([pares[i], pares[i + 1]]);
+  let uno = shelf; ps.forEach(([q, u]) => { if (q <= 1 && u < uno) uno = u; });
+  let v = n * uno;
+  for (const [q, u] of ps) { if (q <= 1 || n < q) continue; const g = Math.floor(n / q) * q; v = Math.min(v, g * u + (n - g) * uno); }
+  return v;
+}
+// Entrada vigente el día n (la última hasta ese día); null si no hay o si ese día no estaba en el catálogo ([día] solo).
+function entradaDe(a, n) { let e = null; for (const x of a || []) { if (x[0] > n) break; e = x; } return e && e.length > 1 ? e : null; }
+function renderLista() {
+  $("aviso").hidden = true;
+  const L = store.get("listasElegidos", {}), ids = Object.keys(L);
+  const vaciar = () => ["legDiario", "chDiario", "tbDiario", "semSin", "semCon", "listaProds", "listaInfo", "cupInfo"].forEach(id => $(id).innerHTML = "");
+  $("lista").innerHTML = ids.length ? ids.map(id => `<option value="${esc(id)}">${esc(L[id].nombre)} (${L[id].items.length})</option>`).join("")
+    : `<option value="">(no hay listas)</option>`;
+  if (!ids.length) { vaciar(); return aviso("Todavía no hay listas en este dispositivo. Armá una en la pestaña 🧾 Listas de la app y abrila: ahí se guarda qué producto se eligió en cada súper."); }
+  if (!L[listaSel]) listaSel = ids[0];
+  $("lista").value = listaSel;
+  const lista = L[listaSel];
+  if (!HC) { vaciar(); return aviso("Todavía no hay histórico del catálogo (o no se pudo bajar). El robot lo guarda 1 vez por día, en la corrida de las 7:17; desde ahí se van sumando días."); }
+  const VIS = STORES.filter(s => HC[s]);
+  const desde = new Date(Date.now() - diasL * 864e5).toISOString().slice(0, 10);
+  // Total de la lista en cada súper cada día (solo si están todos los productos elegidos para ese súper).
+  const mins = Object.fromEntries(VIS.map(s => [s, {}])), huecos = [];
+  for (const s of VIS) for (const n of HC[s].dias) {
+    const d = fechaDeDia(n); if (d < desde) continue;
+    let sin = 0, con = 0, cupTxt = ""; const faltan = [];
+    for (const it of lista.items) {
+      const id = it.ids[s]; if (!id) continue;
+      const e = entradaDe(HC[s].p[id], n);
+      if (!e) { faltan.push(it.txt); continue; }
+      const [, shelf, ...pares] = e;
+      let c = costoN(it.cant, shelf, pares);
+      const cup = cuponDe(s, d, it.nombres[s] || "");
+      if (cup) { c *= 1 - cup.pct / 100; cupTxt = `con −${cup.pct}% cupón ${MEDIOS[cup.medio]?.label || cup.medio}`; }
+      sin += it.cant * shelf; con += c;
+    }
+    if (faltan.length) huecos.push(`${NAME[s]} el ${ddmm(d)} (no estaba: ${faltan.join(", ")})`);
+    else mins[s][d] = { sin: { v: sin }, con: { v: con, txt: cupTxt } };
+  }
+  const dias_ = [...new Set(VIS.flatMap(s => Object.keys(mins[s])))].sort();
+  const primero = Math.min(...VIS.map(s => HC[s].dias[0]).filter(n => n != null));
+  if (dias_.length < 7) aviso(`El histórico de precios del catálogo empezó el ${ddmm(fechaDeDia(primero))}: hay ${dias_.length} día${dias_.length === 1 ? "" : "s"} con datos. ` +
+    "Se guarda 1 vez por día; para comparar días de la semana hace falta al menos 1 semana (mejor 3 o más).");
+  // Qué se compara
+  const noCuenta = VIS.map(s => { const f = lista.items.filter(it => !it.ids[s]); return f.length ? `<b>${NAME[s]}</b> no tiene ${f.length} de ${lista.items.length} (${esc(f.map(it => it.txt).join(", "))}): su total no los incluye.` : ""; }).filter(Boolean);
+  const at = new Date(lista.at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  $("listaInfo").innerHTML = `Se compara siempre la misma compra: en cada súper, el producto que eligió la app para cada ítem la última vez que abriste esta lista (${esc(at)}). ` +
+    `Si la cambiás, abrila de nuevo en la app para actualizarlo. Son los precios del catálogo completo (se guardan 1 vez por día); no incluyen descuentos con medios de pago.` +
+    (noCuenta.length ? `<br>⚠️ ${noCuenta.join(" ")}` : "") +
+    (huecos.length ? `<br>Días sin total (algún producto no estaba en el catálogo): ${esc(huecos.join("; "))}.` : "");
+  $("listaProds").innerHTML = `<table><tr><th>Ítem</th><th>Cant.</th>${VIS.map(s => `<th style="text-align:left">${NAME[s]}</th>`).join("")}</tr>` +
+    lista.items.map(it => `<tr><td>${esc(it.txt)}</td><td>${it.cant}</td>${VIS.map(s => `<td style="text-align:left;white-space:normal;min-width:140px">${it.ids[s] ? esc(it.nombres[s] || it.ids[s]) : `<span class="sub">—</span>`}</td>`).join("")}</tr>`).join("") + "</table>";
+  renderDiario(VIS, dias_, mins, fmt, (x, m) => m === "con" ? x.txt : "");
+  renderCupInfo(VIS);
+  $("semSin").innerHTML = tablaSemana("sin", mins, VIS, null);
+  $("semCon").innerHTML = tablaSemana("con", mins, VIS, null);
 }
 
 // ---------- Filtros ----------
@@ -456,7 +618,9 @@ function lineChart(el, xs, series, fmtY) {
 
 // ---------- Eventos ----------
 $("tabs").onclick = ev => { const c = ev.target.closest("[data-cat]")?.dataset.cat; if (!c || c === cat) return; cat = c; store.set("histCat", cat); prodSel = null; cargarFiltros(); cargar(); };
-$("rango").onclick = ev => { const n = +ev.target.dataset?.dias; if (!n) return; dias = n; store.set("histDias", dias); render(); };
+$("rango").onclick = ev => { const n = +ev.target.dataset?.dias; if (!n) return;
+  if (cat === LISTAS) { diasL = n; store.set("histDiasListas", n); } else { dias = n; store.set("histDias", dias); } render(); };
+$("lista").onchange = () => { listaSel = $("lista").value; store.set("histLista", listaSel); render(); };
 $("prod").onchange = () => { prodSel = $("prod").value; render(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => H && render());
 cargarFiltros();

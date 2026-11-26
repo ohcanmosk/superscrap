@@ -190,7 +190,19 @@
   const esComunidad = x => x.comunidad || /comunidad coto/i.test(x.text || "");
   const promosUsables = (promos, medios) => (promos || []).filter(x => !esComunidad(x) || (medios && medios.comunidad));
 
-  const api = { esComunidad, promosUsables, numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat, MEDIOS, clasificarMedio };
+  // Exclusiones de un cupón (Club Dia: leches infantiles, golosinas, vinos, carnes, mostrador), por la categoría del
+  // producto en Dia ("/Carnicería/...", "/Almacén/Golosinas y Alfajores/...") y, si no hay, por el nombre.
+  const EXCLUYE_RX = {
+    "leches-infantiles": /leches y formulas infantiles|infantil|etapa ?[12]\b/,
+    golosinas: /golosina|alfajor|caramelo|chicle|chupetin|gomita/,
+    vinos: /\bvinos?\b/,
+    carnes: /carniceria|carne vacuna|\b(carne|cerdo|pollo|vacuno|achura)s?\b/,
+    mostrador: /fiambreria|mostrador|al corte/,
+  };
+  const excluido = (p, cup) => (cup.excluye || []).some(k => EXCLUYE_RX[k] &&
+    EXCLUYE_RX[k].test(norm((p.cat || "") + " " + p.name)) && !(k === "carnes" && /soja|vegetal|veggie/.test(norm(p.name))));
+
+  const api = { esComunidad, promosUsables, numAR, norm, parseSize, parseMetros, parseMetrosDetalle, tamano, tamanoCoto, parseDiaTeaser, cleanCarrefourTeaser, vtexOffer, cotoOffer, matchesCat, MEDIOS, clasificarMedio, EXCLUYE_RX, excluido };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SuperScrapComun = api;
 })(this);

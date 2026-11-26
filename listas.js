@@ -185,6 +185,19 @@ function totalSuper(s, lista, d) {
   };
 }
 
+// Para el histórico de la lista (historico.html): qué producto se eligió hoy en cada súper para cada ítem.
+// Se guarda en "listasElegidos" = { <id lista>: { nombre, at, items: [{ id, txt, cant, ids: { <súper>: id | null }, nombres }] } }.
+function guardarElegidos(l) {
+  const todos = store.get("listasElegidos", {});
+  for (const id of Object.keys(todos)) if (!listas.some(x => x.id === id)) delete todos[id];
+  todos[l.id] = { nombre: l.nombre, at: new Date().toISOString(), items: l.items.map(it => {
+    const ids = {}, nombres = {};
+    STORES.filter(s => catalogo[s]).forEach(s => { const e = elegido(it, s); ids[s] = e ? e.p.id : null; if (e) nombres[s] = e.p.name; });
+    return { id: it.id, txt: itemTexto(it), cant: it.cant || 1, ids, nombres };
+  }) };
+  store.set("listasElegidos", todos);
+}
+
 // ---------- Render ----------
 function itemTexto(it) {
   return [it.q, it.marca && `marca ${it.marca}`, it.tam].filter(Boolean).join(" · ");
@@ -243,6 +256,7 @@ function renderListas() {
     }).join("");
   // Resultado: a qué súper conviene ir
   if (!l || !l.items.length) { $("lRes").innerHTML = ""; return; }
+  guardarElegidos(l);
   const res = STORES.filter(s => catalogo[s]).map(s => totalSuper(s, l, selDay))
     .sort((a, b) => a.faltan.length - b.faltan.length || a.total - b.total);
   const win = res[0];
@@ -264,7 +278,8 @@ function renderListas() {
         ${r.ahorroCupon ? `<tr><td colspan="3" class="sub">Ahorro con cupón ${esc(medioLabel(r.cup))}: ${fmt(r.ahorroCupon)}</td></tr>` : ""}
         </table></div></details>`;
     }).join("") +
-    `<div class="sub" style="margin-top:8px">Incluye promos del producto y tus medios de pago del día (compra mínima y tope de reintegro incluidos). Tocá cada súper para ver qué eligió.</div>`;
+    `<div class="sub" style="margin-top:8px">Incluye promos del producto y tus medios de pago del día (compra mínima y tope de reintegro incluidos). Tocá cada súper para ver qué eligió.</div>` +
+    `<a class="ghostlink" style="display:inline-block;margin-top:8px" href="historico.html?lista=${encodeURIComponent(l.id)}">📈 Ver cómo varió el total de esta lista (30 días)</a>`;
 }
 
 // ---------- Eventos ----------

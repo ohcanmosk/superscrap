@@ -385,7 +385,7 @@ const DAYS_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","s
 // Categorías (URLs y filtros) en categorias.js, compartido con scrape.js.
 const { CATEGORIAS, ZONA, SIMULATION, STOCK_CAP, buscar } = window.SuperScrapCats;
 // Lectura de tamaños, promos y precios (compartido con scrape.js e historico.html).
-const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS, promosUsables } = window.SuperScrapComun;
+const { norm, tamano, tamanoCoto, vtexOffer, cotoOffer, matchesCat, MEDIOS, promosUsables, excluido } = window.SuperScrapComun;
 // Promos del producto que el usuario puede usar (las de Comunidad Coto, solo si la marcó en sus medios).
 const promosDe = p => promosUsables(p.promos, S.medios);
 // Papel higiénico que no aclara simple/doble: clasificación del usuario { "<súper>:<id>": "simple" | "doble" }.
@@ -738,17 +738,7 @@ function fechaDe(d) {
 const vigente = (p, f) => (!p.desde || p.desde <= f) && (!p.hasta || p.hasta >= f);
 const enDonde = (p, donde = S.donde) => donde === "online" ? p.online : p.local;
 const pctDe = p => p.pct || null;
-// Exclusiones de un cupón (Club Dia: leches infantiles, golosinas, vinos, carnes, mostrador), por la categoría del
-// producto en Dia ("/Carnicería/...", "/Almacén/Golosinas y Alfajores/...") y, si no hay, por el nombre.
-const EXCLUYE_RX = {
-  "leches-infantiles": /leches y formulas infantiles|infantil|etapa ?[12]\b/,
-  golosinas: /golosina|alfajor|caramelo|chicle|chupetin|gomita/,
-  vinos: /\bvinos?\b/,
-  carnes: /carniceria|carne vacuna|\b(carne|cerdo|pollo|vacuno|achura)s?\b/,
-  mostrador: /fiambreria|mostrador|al corte/,
-};
-const excluido = (p, cup) => (cup.excluye || []).some(k => EXCLUYE_RX[k] &&
-  EXCLUYE_RX[k].test(norm((p.cat || "") + " " + p.name)) && !(k === "carnes" && /soja|vegetal|veggie/.test(norm(p.name))));
+// Exclusiones de un cupón (Club Dia): `excluido` en comun.js.
 // Promos con % de descuento (medios de pago) que el usuario puede usar en ese súper ese día, de mayor a menor.
 function pagosDe(st, d) {
   const f = fechaDe(d);

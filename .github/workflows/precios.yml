@@ -30,14 +30,21 @@ jobs:
           git push
       # Catálogo completo de supermercado (búsqueda libre en la web y listas de compras).
       # Una vez por día (corrida de las 07:17, o a mano), para no cargar a los súper.
-      # Va a la rama "catalogo", que se pisa en cada corrida (sin historial) para que el repo no crezca.
+      # Va a la rama "catalogo", que se pisa en cada corrida (sin historial de git) para que el repo no crezca.
       # Si un súper falla, catalogo.js deja su archivo anterior (por eso se parte de la rama actual).
+      # catalogo/historial/ guarda 30 días de precios (histórico de las listas): si la rama existe y no se pudo
+      # clonar, se corta acá para no pisarla y perder ese histórico.
       - name: Catálogo completo
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 10 * * *'
         continue-on-error: true
         run: |
           DIR="$RUNNER_TEMP/catalogo"
-          git clone -q --depth 1 -b catalogo "https://github.com/${{ github.repository }}.git" "$DIR" || mkdir -p "$DIR"
+          URL="https://github.com/${{ github.repository }}.git"
+          # ls-remote: 0 = la rama existe, 2 = no existe (primera vez), otro = error de red (se corta).
+          R=0; git ls-remote --exit-code --heads "$URL" catalogo >/dev/null || R=$?
+          if [ $R -eq 0 ]; then git clone -q --depth 1 -b catalogo "$URL" "$DIR"
+          elif [ $R -eq 2 ]; then mkdir -p "$DIR"
+          else exit 1; fi
           rm -rf "$DIR/.git"
           node catalogo.js "$DIR"
           cd "$DIR"

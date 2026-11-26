@@ -7,10 +7,16 @@
 //
 // Formato de <súper>.json: { v, store, updated, cols, items: [[id, sku, nombre, marca, precio, lista, promos, categoría, url]] }
 //   promos = [[unidades, precio c/u, texto]], url = linkText (Dia/Carrefour) o ruta del producto (Coto).
+//
+// Histórico (para el histórico de las listas de compras): historial/<súper>.json, los últimos HIST_DIAS (30) días, solo los cambios.
+//   { v, store, dias: [día, ...], p: { "<id>": [[día, precio, unidades, c/u, unidades, c/u...], [día] ...] } }
+//   día = número de día (días desde 1/1/1970, fecha de Argentina); [día] solo = ese día no estaba en el catálogo.
+//   Las promos son las del producto (sin las de Comunidad Coto, que son solo para socios). Cada entrada vale desde
+//   ese día hasta la siguiente; se guarda la última de antes del período para saber el precio del primer día.
 
 const fs = require("fs");
 const path = require("path");
-const { vtexOffer, cotoOffer } = require("./comun.js");
+const { vtexOffer, cotoOffer, esComunidad } = require("./comun.js");
 
 const OUT = process.argv[2] || path.join(__dirname, "catalogo");
 const UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36", accept: "application/json" };
@@ -109,6 +115,43 @@ async function catalogoCoto() {
   return [...prods.values()];
 }
 
+// ---------- Histórico ----------
+const HIST_DIAS = 30;
+const diaNum = (t = new Date()) => { const d = new Date(t.getTime() - 3 * 3600e3); return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 864e5); };
+const igual = (a, b) => a.length === b.length && a.every((x, i) => i === 0 || x === b[i]);
+function actualizarHistorial(store, items, hoy) {
+  const f = path.join(OUT, "historial", store + ".json");
+  let h = null; try { h = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
+  if (!h || h.v !== 1) h = { v: 1, store, dias: [], p: {} };
+  const vistos = new Set();
+  const poner = (id, e) => {
+    const a = (h.p[id] ||= []), ult = a[a.length - 1];
+    if (ult && ult[0] === hoy) a.pop();               // otra corrida el mismo día: vale la última
+    const prev = a[a.length - 1];
+    if (!prev || !igual(prev, e)) a.push(e);
+  };
+  for (const r of items) {
+    const id = String(r[0]); vistos.add(id);
+    const promos = (r[6] || []).filter(([, , text]) => !esComunidad({ text })).flatMap(([q, u]) => [q, u]);
+    poner(id, [hoy, r[4], ...promos]);
+  }
+  // Los que ya no están en el catálogo: [día] (sin precio), si antes tenían.
+  for (const [id, a] of Object.entries(h.p)) if (!vistos.has(id) && a[a.length - 1].length > 1) poner(id, [hoy]);
+  // Recortar: solo los últimos HIST_DIAS días, más la última entrada de antes (el precio con que arranca el período).
+  const desde = hoy - HIST_DIAS + 1;
+  h.dias = [...new Set([...h.dias, hoy])].filter(d => d >= desde).sort((a, b) => a - b);
+  for (const [id, a] of Object.entries(h.p)) {
+    const i = a.findIndex(e => e[0] >= desde);
+    const resto = i < 0 ? a.slice(-1) : i > 0 ? a.slice(i - 1) : a;
+    if (resto.length === 1 && resto[0].length === 1 && resto[0][0] < desde) delete h.p[id]; // no está hace rato
+    else h.p[id] = resto;
+  }
+  h.updated = new Date().toISOString();
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(h));
+  return Object.keys(h.p).length;
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const meta = { updated: new Date().toISOString(), counts: {}, errors: {} };
@@ -120,6 +163,7 @@ async function catalogoCoto() {
       if (items.length < 500) throw new Error(`muy pocos productos (${items.length})`);
       fs.writeFileSync(path.join(OUT, store + ".json"), JSON.stringify({ v: 1, store, updated: meta.updated, cols: COLS, items }));
       meta.counts[store] = items.length;
+      try { actualizarHistorial(store, items, diaNum()); } catch (e) { console.error(`historial ${store}: ERROR ${e.message}`); }
       console.log(`catálogo ${store}: ${items.length} productos en ${((Date.now() - t) / 1000).toFixed(0)} s`);
     } catch (e) {
       meta.errors[store] = e.message;
