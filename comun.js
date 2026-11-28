@@ -97,11 +97,24 @@
           ...(comunidad ? { comunidad: true } : {}) };
       }).filter(x => x.unit > 0 && x.unit < shelf);
     } catch {}
-    let list = shelf;
-    try { const dp = JSON.parse(g("sku.dtoPrice") || "{}"); if (dp.precioLista > shelf) list = dp.precioLista; } catch {}
+    let list = shelf, noAcum = false;
+    try {
+      const dp = JSON.parse(g("sku.dtoPrice") || "{}");
+      if (dp.precioLista > shelf) list = dp.precioLista;
+      // "NoAcumulable.png": Coto avisa que no se acumula con otras promos (tampoco con medios de pago).
+      noAcum = /noacumulable/i.test(`${dp.imagenOferta1 || ""} ${dp.imagenOferta2 || ""}`);
+    } catch {}
+    // Oferta que Coto publica como descuento al precio actual: activePrice = $1970 y en dtoDescuentos
+    // "Precio Contado: $3030" con precioDesc = $1970 (en la web: OFERTA, precio regular $3.030).
+    try {
+      JSON.parse(g("product.dtoDescuentos") || "[]").forEach(d => {
+        const reg = parseFloat((/\$\s*([\d.]+)/.exec(d.textoPrecioRegular || "") || [])[1]);
+        if (reg > list && Math.abs(parseFloat(d.precioDesc) - shelf) < 0.5) list = reg;
+      });
+    } catch {}
     // Precio por unidad de medida que publica Coto (en papel higiénico: por m²).
     const ref = parseFloat(g("sku.referencePrice")) || null;
-    return { shelf, list, promos, ref };
+    return { shelf, list, promos, ref, ...(noAcum ? { noAcum: true } : {}) };
   }
   // Tamaño de un producto de Coto: en papel higiénico se usa su precio por m² (precio ÷ precio por m² = m²;
   // rollos de 10 cm de ancho → m² × 10 = metros), que está aunque el nombre no diga los metros.

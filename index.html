@@ -576,7 +576,7 @@ function normCoto(r) {
   const name = g("sku.displayName") || g("product.displayName");
   const o = cotoOffer(a);
   if (!o) return null;
-  const { shelf, list, promos } = o;
+  const { shelf, list, promos, noAcum } = o;
   // Disponibilidad por sucursal: product.sDisp_<sucursal> = "1004" → hay stock (así lo lee Coto Digital).
   const stock = {};
   ZONA.coto.forEach(z => {
@@ -589,7 +589,7 @@ function normCoto(r) {
     url: "https://www.cotodigital.com.ar/sitios/cdigi/productos" + rs.replace(/\?.*$/, ""),
     img: g("product.mediumImage.url") || "",
     ...sizeCoto(name, o),
-    shelf, list, promos, hasPromo: promos.length > 0 || list > shelf,
+    shelf, list, promos, hasPromo: promos.length > 0 || list > shelf, ...(noAcum ? { noAcum } : {}),
     tipo: /fresca/i.test(g("product.LCLASE") || "") || /sachet/i.test(name) ? "sachet" : "larga",
     cat, stock,
   };
@@ -753,8 +753,9 @@ function cuponesDe(st, d) {
     .sort((a, b) => pctDe(b) - pctDe(a));
 }
 // ¿El descuento con medio de pago `x` vale para el producto `p`? Las "solo productos sin oferta" (Coto) no aplican si
-// tiene promo u oferta; y a un producto en oferta (precio rebajado, list > shelf) solo se le suma si es acumulable.
-const pagoAplica = (x, p) => !(x.soloSinOferta && (promosDe(p).length || p.list > p.shelf)) && !(p.list > p.shelf && x.acumulable !== true);
+// tiene promo u oferta; a un producto en oferta (precio rebajado, list > shelf) solo se le suma si es acumulable;
+// y a los que Coto marca "No acumulable con otras promos" (noAcum), nunca.
+const pagoAplica = (x, p) => !p.noAcum && !(x.soloSinOferta && (promosDe(p).length || p.list > p.shelf)) && !(p.list > p.shelf && x.acumulable !== true);
 // El mejor descuento para un producto.
 const pagoPara = (p, d) => pagosDe(p.store, d).find(x => pagoAplica(x, p)) || null;
 async function loadPromos() {
