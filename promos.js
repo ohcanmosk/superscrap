@@ -325,7 +325,8 @@ async function promosCarrefour() {
       tiendas: [formatos.length ? "Carrefour " + formatos.join(", ") : null, p.ecommerce ? "online" : null].filter(Boolean).join(" · ") || null,
       tope: parseTope(p.title) || parseTope(p.sub_title || "") || parseTope(p.legal || ""), minimo: parseMinimo(texto) || parseMinimo(p.legal || ""),
       desde: fecha(p.active_from), hasta: fecha(p.active_to, true), cuando: p.validText || null,
-      soloSinOferta: false, acumulable: acumulable(texto),
+      // Si el título no dice nada, lo dice el legal ("NO ACUMULABLE…" / "ACUMULABLE CON PRODUCTOS EN OFERTA").
+      soloSinOferta: false, acumulable: acumulable(texto) ?? acumulable(p.legal || ""),
       resumen: recortar(texto, 220), legal: recortar(p.legal, 1500), url: URLS.carrefourLegal,
     };
   });

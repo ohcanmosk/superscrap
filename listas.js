@@ -147,7 +147,7 @@ function elegido(it, s) {
 }
 const topeNum = t => { const m = /\$\s*([\d.]+)/.exec(t || ""); return m ? +m[1].replace(/\./g, "") : null; };
 // Total de la lista en un súper el día d: promos del producto, el mejor medio de pago (respetando compra mínima,
-// tope y "solo productos sin oferta"; no se suma a las promos salvo que sea acumulable) y el cupón Club Dia.
+// tope y "solo productos sin oferta"; no se suma a promos ni ofertas salvo que sea acumulable) y el cupón Club Dia.
 function totalSuper(s, lista, d) {
   const lineas = lista.items.map(it => { const e = elegido(it, s); return e ? { it, n: it.cant || 1, ...e } : { it, falta: true }; });
   const ok = lineas.filter(l => !l.falta);
@@ -158,7 +158,7 @@ function totalSuper(s, lista, d) {
     const k = P ? 1 - P.pct / 100 : 1, txt = P ? `−${P.pct}% ${medioLabel(P)}` : "";
     const det = ok.map(l => {
       const sinPago = { ...l, v: l.c.v, nota: l.c.nota, ahorro: 0 };
-      if (!P || (P.soloSinOferta && (promosDe(l.p).length || l.p.list > l.p.shelf))) return sinPago;
+      if (!P || !pagoAplica(P, l.p)) return sinPago;
       const goNdola = l.n * l.p.shelf, conPago = goNdola * k;          // medio de pago sobre el precio de góndola
       const conPromo = P.acumulable ? l.c.v * k : l.c.v;               // o la promo del producto (+ pago si es acumulable)
       if (conPago < conPromo) return { ...l, v: conPago, nota: txt, ahorro: goNdola - conPago };

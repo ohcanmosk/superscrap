@@ -752,8 +752,11 @@ function cuponesDe(st, d) {
   return (promosData?.promos || []).filter(p => p.super === st && p.cupon && pctDe(p) && p.dias.includes(d) && vigente(p, f) && enDonde(p) && aplica(p))
     .sort((a, b) => pctDe(b) - pctDe(a));
 }
-// El mejor descuento para un producto: las promos "solo productos sin oferta" (Coto) no aplican si tiene promo u oferta.
-const pagoPara = (p, d) => pagosDe(p.store, d).find(x => !(x.soloSinOferta && (promosDe(p).length || p.list > p.shelf))) || null;
+// ¿El descuento con medio de pago `x` vale para el producto `p`? Las "solo productos sin oferta" (Coto) no aplican si
+// tiene promo u oferta; y a un producto en oferta (precio rebajado, list > shelf) solo se le suma si es acumulable.
+const pagoAplica = (x, p) => !(x.soloSinOferta && (promosDe(p).length || p.list > p.shelf)) && !(p.list > p.shelf && x.acumulable !== true);
+// El mejor descuento para un producto.
+const pagoPara = (p, d) => pagosDe(p.store, d).find(x => pagoAplica(x, p)) || null;
 async function loadPromos() {
   const base = await localServerBase();
   const u = base ? base + "/data/promos.json" : location.protocol.startsWith("http") ? "data/promos.json" : null;
